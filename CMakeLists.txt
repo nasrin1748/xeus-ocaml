@@ -267,7 +267,7 @@ if(EMSCRIPTEN)
     # Add --pre-js to prepend our OCaml-generated JS to the final output.
     target_link_options(
         xocaml PRIVATE 
-            "SHELL:--pre-js src/ocaml/_build/default/kernel.bc.js"
+            "SHELL:--pre-js ${CMAKE_CURRENT_SOURCE_DIR}/src/ocaml/_build/default/kernel.bc.js"
             )
     # This ensures 'ocaml_kernel' is available globally before the wasm module runs.
     xeus_wasm_link_options(xocaml "web,worker")
