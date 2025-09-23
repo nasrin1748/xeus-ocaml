@@ -87,7 +87,7 @@ if(EMSCRIPTEN)
         OUTPUT ${CMAKE_BINARY_DIR}/kernel.bc.js
         COMMAND ${CMAKE_COMMAND} -E echo "Building OCaml to JavaScript..."
         # Assumes OCaml sources are in src/ocaml
-        COMMAND dune build --root src/ocaml/ 
+        COMMAND opam exec -- dune build --root src/ocaml/ 
         COMMAND ${CMAKE_COMMAND} -E copy
                 ${CMAKE_CURRENT_SOURCE_DIR}/src/ocaml/_build/default/kernel.bc.js
                 ${CMAKE_BINARY_DIR}/kernel.bc.js
