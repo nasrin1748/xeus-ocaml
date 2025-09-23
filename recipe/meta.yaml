@@ -1,0 +1,32 @@
+{% set name = "xeus-ocaml" %}
+{% set version = "0.1.0" %}  # Or the specific version you want to package
+
+package:
+  name: {{ name|lower }}
+  version: {{ version }}
+
+source:
+  git_url: https://github.com/davy39/xeus-ocaml.git
+  git_rev: main  # Or a specific tag/commit
+
+build:
+  number: 0
+  skip: true  # [py<37]
+
+requirements:
+  build:
+    - {{ compiler('cxx') }}
+    - cmake
+
+  host:
+    - xeus >=5.0.0
+    - xeus-zmq >=1.0.2
+  run:
+    - xeus >=5.0.0
+    - xeus-zmq >=1.0.2
+
+about:
+  home: https://github.com/jupyter-xeus/xeus-ocaml
+  license: GNU General Public License v3.0
+  license_file: LICENSE
+  summary: 'Jupyter kernel for OCaml'
