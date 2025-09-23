@@ -40,6 +40,8 @@ jobs:
 
       - name: Build conda package
         uses: prefix-dev/rattler-build-action@v0.2.34
+        with:
+          build-args: --recipe recipe/recipe.yaml -c  https://repo.prefix.dev/emscripten-forge-dev  -c conda-forge --target-platform emscripten-wasm32
 
       - name: Build
         shell: bash -l {0}
@@ -70,5 +72,5 @@ jobs:
 
           for pkg in $(find output -type f \( -name "*.conda" -o -name "*.tar.bz2" \) ); do
             echo "Uploading ${pkg}"
-            rattler-build upload prefix --recipe recipe/recipe.yaml -c emscripten "${pkg}"
+            rattler-build upload prefix -c emscripten "${pkg}"
           done
