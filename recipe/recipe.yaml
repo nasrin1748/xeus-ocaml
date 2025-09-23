@@ -6,11 +6,7 @@ package:
   version: ${{ version }}
 
 source:
-<<<<<<< HEAD
   path: ../
-=======
-  path: .
->>>>>>> 7545d44095e7bc9b75d60347cc11c84732498351
 
 build:
   number: 2
