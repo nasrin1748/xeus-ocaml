@@ -5,16 +5,10 @@ on:
   push:
     branches:
       - main
-  schedule:
-    - cron: '0 2 * * *' # run at 2 AM UTC
 
 jobs:
   emscripten_wasm:
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        emsdk_ver: ["3.1.73"]
 
     steps:
       - uses: actions/checkout@v5
@@ -27,7 +21,7 @@ jobs:
         with:
           ocaml-compiler: 5
 
-      - name: Install OCaml dependencies
+      - name: Build js_of_ocaml kernel
         run: |
           opam install dune js_of_ocaml lwt graphics js_of_ocaml-lwt js_of_ocaml-ppx js_of_ocaml-toplevel base
           opam exec -- dune build --root src/ocaml/ 
