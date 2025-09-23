@@ -1,0 +1,37 @@
+context:
+  version: 0.0.1
+
+package:
+  name: xeus-ocaml
+  version: ${{ version }}
+
+source:
+  git: https://github.com/davy39/xeus-ocaml
+  branch: main
+
+build:
+  number: 2
+
+requirements:
+  build:
+  - ${{ compiler("cxx") }}
+  - cmake
+  - ninja
+  host:
+  - nlohmann_json
+  - xeus
+  - xeus-lite
+
+tests:
+- script:
+  - test -f $PREFIX/bin/xocaml.wasm
+  - test -f $PREFIX/bin/xocaml.js
+about:
+  license: BSD-3-Clause
+  license_family: BSD-3
+  license_file: LICENSE
+  summary: xeus-javascript
+  homepage: https://github.com/davy39/xeus-ocaml
+extra:
+  recipe-maintainers:
+  - Davy39

@@ -1,19 +1,17 @@
-# xeus-ocaml-recipe/build.sh
+mkdir build
+cd build
 
-#!/bin/bash
+export CMAKE_PREFIX_PATH=$PREFIX
+export CMAKE_SYSTEM_PREFIX_PATH=$PREFIX
 
-set -e # Exit immediately if a command exits with a non-zero status.
-set -x # Print commands and their arguments as they are executed.
+# Configure step
+cmake ${CMAKE_ARGS} ..                                \
+    -GNinja                                           \
+    -DCMAKE_BUILD_TYPE=Release                        \
+    -DCMAKE_PREFIX_PATH=$PREFIX                       \
+    -DCMAKE_INSTALL_PREFIX=$PREFIX                    \
 
-# Configure CMake
-cmake -B build \
-      -D CMAKE_INSTALL_PREFIX=$PREFIX \
-      -D CMAKE_BUILD_TYPE=Release \
-      -D XEUS_OCAML_BUILD_SHARED=ON \
-      -D XEUS_OCAML_BUILD_EXECUTABLE=ON
+# Build step
+ninja
 
-# Build the project
-cmake --build build -- -j${CPU_COUNT}
-
-# Install the project
-cmake --install build
+ninja install

@@ -42,3 +42,6 @@ share/jupyter/kernels/xocaml/kernel.json
 build/
 
 bld
+
+pixi.lock
+output/

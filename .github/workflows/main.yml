@@ -38,6 +38,9 @@ jobs:
           environment-file: environment-wasm-build.yml
           environment-name: xeus-ocaml-wasm-build
 
+      - name: Build conda package
+        uses: prefix-dev/rattler-build-action@v0.2.34
+
       - name: Build
         shell: bash -l {0}
         run: |
@@ -64,6 +67,8 @@ jobs:
             ..
           
           make -j${{ steps.cpu-cores.outputs.count }}
-          
 
-  
+          for pkg in $(find output -type f \( -name "*.conda" -o -name "*.tar.bz2" \) ); do
+            echo "Uploading ${pkg}"
+            rattler-build upload prefix -c emscripten "${pkg}"
+          done

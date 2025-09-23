@@ -76,31 +76,6 @@ set(xeus_REQUIRED_VERSION 5.0.0)
 
 find_package(xeus ${xeus_REQUIRED_VERSION} REQUIRED)
 
-# OCaml JS Build (for Emscripten Target)
-# ======================================
-
-if(EMSCRIPTEN)
-    # This custom command first runs 'dune' to compile the OCaml sources in src/ocaml
-    # into a JavaScript file. Then, it copies the generated JS file from dune's build
-    # directory into a predictable location in CMake's build directory.
-    add_custom_command(
-        OUTPUT ${CMAKE_BINARY_DIR}/kernel.bc.js
-        COMMAND ${CMAKE_COMMAND} -E echo "Building OCaml to JavaScript..."
-        # Assumes OCaml sources are in src/ocaml
-        COMMAND opam exec -- dune build --root src/ocaml/ 
-        COMMAND ${CMAKE_COMMAND} -E copy
-                ${CMAKE_CURRENT_SOURCE_DIR}/src/ocaml/_build/default/kernel.bc.js
-                ${CMAKE_BINARY_DIR}/kernel.bc.js
-        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-        # Re-run this command if the OCaml source files or dune file change.
-        DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/ocaml/kernel.ml ${CMAKE_CURRENT_SOURCE_DIR}/src/ocaml/dune
-        COMMENT "Building OCaml JS kernel"
-    )
-
-    # This custom target provides a dependency handle for other targets.
-    add_custom_target(ocaml_js_build DEPENDS ${CMAKE_BINARY_DIR}/kernel.bc.js)
-endif()
-
 
 # Flags
 # =====
@@ -288,18 +263,14 @@ if(EMSCRIPTEN)
     xeus_ocaml_set_kernel_options(xocaml)
     xeus_wasm_compile_options(xocaml)
 
-    # Ensure OCaml to JS compilation finishes before linking xocaml.
-    add_dependencies(xocaml ocaml_js_build)
-
     # Linker options for wasm.
     # Add --pre-js to prepend our OCaml-generated JS to the final output.
     target_link_options(
         xocaml PRIVATE 
-            "SHELL:--pre-js ${CMAKE_BINARY_DIR}/kernel.bc.js"
+            "SHELL:--pre-js src/ocaml/_build/default/kernel.bc.js"
             )
     # This ensures 'ocaml_kernel' is available globally before the wasm module runs.
     xeus_wasm_link_options(xocaml "web,worker")
-    #xeus_wasm_link_options(xocaml "web,worker" "--pre-js ${CMAKE_BINARY_DIR}/kernel.bc.js")
 endif()
 
 # Installation
