@@ -41,7 +41,7 @@ jobs:
       - name: Build
         shell: bash -l {0}
         run: |
-          opam install dune js_of_ocaml lwt graphics
+          opam install dune js_of_ocaml lwt graphics js_of_ocaml-lwt js_of_ocaml-ppx js_of_ocaml-toplevel
           emsdk update
           emsdk install 3.1.73
           emsdk activate 3.1.73
