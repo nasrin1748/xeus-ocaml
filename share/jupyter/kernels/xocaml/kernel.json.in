@@ -5,8 +5,11 @@
       "-f",
       "{connection_file}"
   ],
-  "language": "ocaml",
-  "metadata": {"debugger": false
   
+  "language": "ocaml",
+  "metadata": {"debugger": false,
+  "shared": {
+    "x-ocaml.worker+effects.js": "lib/x-ocaml.worker+effects.js"
+  }
   }
 }

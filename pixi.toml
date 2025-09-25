@@ -1,45 +1,130 @@
+# pixi.toml: Project configuration for the xeus-ocaml Jupyter kernel.
+# This file defines dependencies, build tasks, and environments for both
+# native development and WebAssembly compilation.
 [project]
-name = "wasm"
-version = "0.1.0"
-description = "Setup a pixi environment for building a jupyterlite app with WASM"
-authors = ["Wolf Vollprecht <w.vollprecht@gmail.com>"]
-platforms = ["emscripten-wasm32", "osx-arm64", "linux-64", "win-64"]
-channels = ["conda-forge"]
+# The name of the project.
+name = "xeus-ocaml"
+# List of conda channels to search for packages.
+# Order matters: pixi will search them in the specified sequence.
+channels = [
+    "conda-forge",
+    "https://repo.prefix.dev/emscripten-forge-dev", # Channel for Emscripten (WASM) specific packages
+]
+# Target platforms for which this project can be built.
+platforms = [
+    "linux-64",         # For the local development environment and extension build
+    "emscripten-wasm32" # For the WebAssembly kernel
+]
 
-[feature.wasm]
-# add the emscripten-forge channel to the list of channels
-channels = ["https://repo.mamba.pm/emscripten-forge"]
+###############################################################################
+# Feature Definitions
+# Features are modular blocks of configuration (e.g., dependencies, tasks)
+# that can be combined to create different environments.
+###############################################################################
+
+#==============================================================================
+# [feature.kernel]: WASM Kernel
+# Defines the dependencies for the WebAssembly-based Jupyter kernel.
+# This feature is specifically for the emscripten-wasm32 platform.
+#==============================================================================
+[feature.kernel]
 platforms = ["emscripten-wasm32"]
 
-[feature.wasm.dependencies]
-# we always need the xeus-python kernel for jupyterlite
-xeus-python = "*"
-python = "*"
-# add any extra packages from emscripten-forge here
-pillow = "*"
-numpy = "*"
+# [feature.kernel.dependencies]
+# xeus-ocaml = "*"
+#==============================================================================
+# [feature.extension]: JupyterLab Extension
+# Defines the environment and tasks for developing the JupyterLab extension.
+# This is intended for a native linux-64 development environment.
+#==============================================================================
+[feature.extension]
+platforms = ["linux-64"]
 
-[feature.host]
-channels = ["conda-forge"]
-platforms = ["osx-arm64", "linux-64", "win-64"]
-dependencies = { python = "*", jupyterlite-xeus = "*" }
+[feature.extension.dependencies]
+# Node.js is required for JupyterLab extension development.
+nodejs = "20.*"
+# Templating tool used for project scaffolding.
+copier = "9.*"
+# Jinja2 extension for time-related functions.
+jinja2-time = "*"
+# Python package installer.
+pip = "*"
+# The JupyterLab frontend.
+jupyterlab = "*"
 
-# make sure that we have the WASM environment installed before building the app
-[feature.host.tasks]
-setup_wasm = { cmd = "pixi install -e wasm", inputs = ["pixi.lock"] }
+[feature.extension.tasks]
+# Installs Node.js dependencies for the JupyterLab extension.
+# It cleans the environment before installing to ensure a fresh state.
+setup-extension = { cmd = "truncate -s 0 yarn.lock && rm -rf node_modules && jlpm install", cwd = "extension" }
 
-# build the jupyterlite app
-[feature.host.tasks.build]
-cmd = "jupyter lite build --XeusAddon.prefix=.pixi/envs/wasm"
-depends-on = ["setup_wasm"]
-outputs = ["_output"]
-inputs = ["pixi.lock"]
+# Builds the production version of the JupyterLab extension.
+# This task depends on 'setup-extension' to ensure dependencies are installed first.
+build-extension = { cmd = "jlpm build:prod && jupyter labextension build .", cwd = "extension", depends-on = ["setup-extension"] }
 
-# serve the jupyterlite app with a "simple server"
-[feature.host.tasks.serve]
-cmd = "python -m http.server 8000 -d _output"
-depends-on = ["build"]
+#==============================================================================
+# [feature.build]: JupyterLite Build Environment
+# Defines the environment and tasks required to build the WASM kernel
+# and the final JupyterLite website.
+#==============================================================================
+[feature.build]
+platforms = ["linux-64"]
 
+[feature.build.dependencies]
+# Core dependencies for building and running JupyterLite.
+jupyterlab = "*"
+jupyterlite-xeus = "*"
+jupyter_server = "*"
+ipywidgets = "*"
+# The rattler-build tool is used to build conda packages from recipes.
+rattler-build = "*"
+
+[feature.build.tasks]
+# Builds the xeus-ocaml WASM kernel using a recipe file.
+# The command specifies the emscripten-forge channel for WASM dependencies
+# and targets the emscripten-wasm32 platform.
+build-kernel = """
+rattler-build build --recipe recipe/recipe.yaml \
+            -c https://repo.prefix.dev/emscripten-forge-dev \
+            -c conda-forge \
+            --target-platform emscripten-wasm32
+"""
+
+upload-kernel = """
+rattler-build upload prefix --api-key=$PREFIX_API_KEY -c xeus-ocaml output/emscripten-wasm32/xeus-ocaml*
+"""
+# Installs the locally built kernel into the 'kernel' environment.
+install-kernel = """
+pixi run -e kernel micromamba install -y  $PIXI_PROJECT_ROOT/output/emscripten-wasm32/xeus-ocaml*
+"""
+# Builds the static JupyterLite site.
+# It cleans previous build artifacts and points to the WASM kernel
+# located in the .pixi/envs/kernel directory.
+build-jupyterlite = { cmd = "rm -fr _output && rm -f .jupyterlite.doit.db && jupyter lite build --XeusAddon.prefix=.pixi/envs/kernel" }
+
+# Serves the JupyterLite site locally for development and testing.
+# This provides a quick way to test the WASM kernel in a live environment.
+serve-jupyterlite = { cmd = "rm -fr _output && rm -f .jupyterlite.doit.db && jupyter lite serve --XeusAddon.prefix=.pixi/envs/kernel" }
+
+build-all = """
+pixi run build-extension && \
+pixi run build-kernel && \
+pixi run install-kernel && \
+pixi run build-jupyterlite
+""" 
+###############################################################################
+# Environments
+# Environments are concrete instances that combine one or more features.
+# You can activate an environment using `pixi shell <name>`.
+###############################################################################
 [environments]
-default = ["host"]
-wasm = ["wasm"]
+# The 'default' environment is activated when you run `pixi shell` or `pixi run`.
+# It contains the tools for building the kernel and the JupyterLite site.
+default = { features = ["build"] }
+
+# The 'kernel' environment contains only the WASM-compiled kernel and its dependencies.
+# It is isolated to be bundled into the JupyterLite site.
+kernel = { features = ["kernel"] }
+
+# The 'extension' environment provides the necessary tools (like Node.js)
+# for developing the JupyterLab frontend extension.
+extension = { features = ["extension"] }

@@ -42,6 +42,13 @@ share/jupyter/kernels/xocaml/kernel.json
 build/
 
 bld
-
-pixi.lock
 output/
+_output/
+
+.jupyterlite.doit.db
+
+.pixi/
+_build/
+.vscode/
+*.yarn/
+*node_modules/
