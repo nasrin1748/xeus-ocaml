@@ -286,9 +286,7 @@ target_link_options(xocaml
     PUBLIC "SHELL: -s MAIN_MODULE=1"
     PUBLIC "SHELL: -s NO_EXIT_RUNTIME=1"
     PUBLIC "SHELL: -s FORCE_FILESYSTEM=1"
-    # "SHELL:--pre-js ${CMAKE_CURRENT_SOURCE_DIR}/src/ocaml/xocaml.js"
     PUBLIC "SHELL:--pre-js ${CMAKE_CURRENT_SOURCE_DIR}/src/pre.js"
-
     PUBLIC "SHELL:--post-js ${CMAKE_CURRENT_SOURCE_DIR}/src/post.js"
 )
 

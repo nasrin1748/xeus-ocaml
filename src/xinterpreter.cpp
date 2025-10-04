@@ -27,7 +27,7 @@ namespace xeus_ocaml
         // A global pointer to the single interpreter instance is necessary because
         // Emscripten's C++ binding mechanism for JS callbacks works with free functions,
         // not member functions directly.
-        interpreter* g_interpreter_instance = nullptr;
+        interpreter *g_interpreter_instance = nullptr;
     }
 
     void global_on_message_callback(emscripten::val event)
@@ -70,30 +70,42 @@ namespace xeus_ocaml
         // This allows for programmatic control of the frontend from the kernel.
         comm_manager().register_comm_target(
             "jupyterlab-commands-executor",
-            [](xeus::xcomm&&, const xeus::xmessage&) {}
-        );
+            [](xeus::xcomm &&, const xeus::xmessage &) {});
+
+        comm_manager().register_comm_target(
+            "tooltip-comm-target",
+            [this](xeus::xcomm &&, const xeus::xmessage &)
+            {
+                // Tooltip command was triggered in the frontend
+                tooltip_requested = true;
+            });
     }
 
-    void interpreter::send_to_worker(const nl::json& message)
+    void interpreter::send_to_worker(const nl::json &message)
     {
+        //std::cout << "[C++ -> OCaml] Sending message: " << message.dump() << std::endl;
         // This is a thin C++ wrapper around the JavaScript `worker.postMessage()` method.
         emscripten::val ocamlWorker = emscripten::val::module_property("ocamlWorker");
         ocamlWorker.call<void>("postMessage", emscripten::val(message.dump()));
     }
 
-    void interpreter::on_message_callback(const std::string& message)
+    void interpreter::on_message_callback(const std::string &message)
     {
+        //std::cout << "[OCaml -> C++] Received message: " << message << std::endl;
         // First, safely parse the incoming JSON string.
         nl::json response_json;
-        try {
+        try
+        {
             response_json = nl::json::parse(message);
-        } catch (const nl::json::parse_error& e) {
+        }
+        catch (const nl::json::parse_error &e)
+        {
             std::cerr << "[C++] Failed to parse JSON from OCaml worker: " << e.what() << std::endl;
             return;
         }
-
         // Validate the basic structure of the response array.
-        if (!response_json.is_array() || response_json.size() < 2) {
+        if (!response_json.is_array() || response_json.size() < 2)
+        {
             std::cerr << "[C++] Invalid response format from OCaml worker." << std::endl;
             return;
         }
@@ -102,54 +114,78 @@ namespace xeus_ocaml
         std::string response_type = response_json[0].get<std::string>();
         int request_id = response_json[1].get<int>();
 
-        if (response_type == "Merlin_response") {
+        if (response_type == "Merlin_response")
+        {
             handle_merlin_response(response_json[2]);
-        } else if (response_type == "Top_response_at") {
+        }
+        else if (response_type == "Top_response_at")
+        {
             handle_execution_output(request_id, response_json[3]);
-        } else if (response_type == "Top_response") {
+        }
+        else if (response_type == "Top_response")
+        {
             handle_final_response(request_id, "");
-        } else {
+        }
+        else if (response_type == "Formatted_source")
+        {
+            // We could format cell content ...
+        }
+        else
+        {
             std::string error_msg = "Received unhandled response type from OCaml worker: " + response_type;
             handle_final_response(request_id, error_msg);
         }
     }
 
-    void interpreter::handle_merlin_response(const nl::json& merlin_answer)
+    void interpreter::handle_merlin_response(const nl::json &merlin_answer)
     {
-        if (!merlin_answer.is_array() || merlin_answer.empty()) return;
+        if (!merlin_answer.is_array() || merlin_answer.empty())
+            return;
 
         // Sub-dispatch for different kinds of Merlin responses.
-        const std::string& merlin_response_type = merlin_answer[0].get<std::string>();
-        const nl::json& data = merlin_answer[1];
+        const std::string &merlin_response_type = merlin_answer[0].get<std::string>();
+        const nl::json &data = merlin_answer[1];
 
-        if (merlin_response_type == "Completions") {
+        if (merlin_response_type == "Completions")
+        {
             handle_completion_response(data);
-        } else if (merlin_response_type == "Typed_enclosings") {
+        }
+        else if (merlin_response_type == "Typed_enclosings")
+        {
             handle_inspection_response(data);
         }
     }
 
-    std::string interpreter::map_ocaml_kind_to_icon(const nl::json& kind_json)
+    std::string interpreter::map_ocaml_kind_to_icon(const nl::json &kind_json)
     {
-        if (!kind_json.is_array() || kind_json.empty()) {
+        if (!kind_json.is_array() || kind_json.empty())
+        {
             return "text";
         }
-        const std::string& kind = kind_json[0].get<std::string>();
+        const std::string &kind = kind_json[0].get<std::string>();
 
         // Map Merlin's type kinds to the icon names supported by JupyterLab's completer.
-        if (kind == "Value") return "function";
-        if (kind == "Module" || kind == "Modtype") return "module";
-        if (kind == "Constructor" || kind == "Variant") return "class";
-        if (kind == "Type") return "interface";
-        if (kind == "Method" || kind == "Methodcall") return "method";
-        if (kind == "Keyword") return "keyword";
-        if (kind == "Label") return "field";
-        if (kind == "Exn") return "event";
+        if (kind == "Value")
+            return "function";
+        if (kind == "Module" || kind == "Modtype")
+            return "module";
+        if (kind == "Constructor" || kind == "Variant")
+            return "class";
+        if (kind == "Type")
+            return "interface";
+        if (kind == "Method" || kind == "Methodcall")
+            return "method";
+        if (kind == "Keyword")
+            return "keyword";
+        if (kind == "Label")
+            return "field";
+        if (kind == "Exn")
+            return "event";
 
         return "text"; // A safe default.
     }
 
-    void interpreter::handle_completion_response(const nl::json& completion_data)
+    void interpreter::handle_completion_response(const nl::json &completion_data)
     {
         nl::json matches = nl::json::array();
         nl::json rich_items = nl::json::array();
@@ -157,7 +193,7 @@ namespace xeus_ocaml
         if (completion_data.contains("entries"))
         {
             // Iterate through each completion suggestion from Merlin.
-            for (const auto& entry : completion_data["entries"])
+            for (const auto &entry : completion_data["entries"])
             {
                 std::string name = entry.value("name", "");
                 matches.push_back(name);
@@ -166,7 +202,7 @@ namespace xeus_ocaml
                 nl::json rich_item;
                 rich_item["text"] = name;
                 rich_item["type"] = map_ocaml_kind_to_icon(entry.value("kind", nl::json::array()));
-                rich_item["signature"] = entry.value("desc", ""); // The type signature.
+                rich_item["signature"] = entry.value("desc", "");     // The type signature.
                 rich_item["documentation"] = entry.value("info", ""); // The docstring.
 
                 rich_items.push_back(rich_item);
@@ -189,21 +225,24 @@ namespace xeus_ocaml
         send_jupyterlab_command("completer:invoke-notebook");
     }
 
-    void interpreter::handle_inspection_response(const nl::json& inspection_data)
+    void interpreter::handle_inspection_response(const nl::json &inspection_data)
     {
         nl::json reply;
         if (!inspection_data.empty())
         {
-            // Extract the type string from the Merlin response.
-            const auto& type_info = inspection_data[0][1];
+            const auto &type_info = inspection_data[0][1];
             if (type_info.is_array() && type_info.size() == 2 && type_info[0] == "String")
             {
                 std::string type_str = type_info[1].get<std::string>();
-                
-                // Create a data bundle with plain text and a formatted HTML version for the tooltip.
+
+                // Create a data bundle for the inspector panel.
                 nl::json data;
                 data["text/plain"] = type_str;
-                data["text/html"] = "<div style=\"font-family: var(--jp-code-font-family);\"><strong>Type:</strong><code> " + type_str + "</code></div>";
+                data["text/markdown"] = "```ocaml\n" + type_str + "\n```";
+                // Display them into the Contextual Help.
+                nl::json inspector_args;
+                inspector_args["data"] = data;
+                send_jupyterlab_command("inspector:show-custom-help", inspector_args);
                 reply = xeus::create_inspect_reply(true, data, {});
             }
         }
@@ -214,19 +253,31 @@ namespace xeus_ocaml
             reply = xeus::create_inspect_reply(false, {}, {});
         }
 
-        // Cache the reply and trigger.
+        // Cache the reply.
         std::lock_guard<std::mutex> lock(m_inspection_cache.m_mutex);
         m_inspection_cache.m_reply = reply;
+
+        // Display tooltip if requested (SHIFT+TAB)
+        if (tooltip_requested == true)
+        {
+            send_jupyterlab_command("tooltip:launch-notebook");
+            tooltip_requested = false;
+        }
     }
 
-    nl::json interpreter::inspect_request_impl(const std::string& code, int cursor_pos, int)
+    nl::json interpreter::inspect_request_impl(const std::string &code, int cursor_pos, int)
     {
+        //std::cout << "[C++] inspect_request_impl: " << code << std::endl;
         std::lock_guard<std::mutex> lock(m_inspection_cache.m_mutex);
 
         // Serve from cache if the request is identical to the previous one.
         if (m_inspection_cache.m_code == code && m_inspection_cache.m_cursor_pos == cursor_pos && !m_inspection_cache.m_reply.is_null())
         {
-            return m_inspection_cache.m_reply;
+            nl::json data = m_inspection_cache.m_reply;
+            nl::json inspector_args;
+            inspector_args["data"] = data;
+            send_jupyterlab_command("inspector:show-custom-help", inspector_args);
+            return data;
         }
 
         // On cache miss, clear old data and send a new request to the worker.
@@ -238,29 +289,18 @@ namespace xeus_ocaml
         nl::json merlin_action = {"Type_enclosing", code, {"Offset", cursor_pos}};
         nl::json request_json = {"Merlin", request_id, merlin_action};
         send_to_worker(request_json);
-
-        // Return an empty reply immediately. Will need double SHIT+TAB.
         return xeus::create_inspect_reply(false, {}, {});
     }
-    
+
     void interpreter::execute_request_impl(
         send_reply_callback cb,
         int execution_counter,
-        const std::string& code,
+        const std::string &code,
         xeus::execute_request_config,
-        nl::json
-    )
+        nl::json)
     {
         // Create a mutable copy of the input code to be processed.
         std::string processed_code = code;
-
-        // Use a loop to find and replace all occurrences of ";;" with a space.
-        size_t pos = 0;
-        while ((pos = processed_code.find(";;", pos)) != std::string::npos) {
-            processed_code.replace(pos, 2, " ");
-            // Move past the position of the replacement to continue searching.
-            pos += 1;
-        }
 
         // Store the callback and execution count to be used when the async response arrives.
         int request_id = ++m_request_id_counter;
@@ -271,88 +311,116 @@ namespace xeus_ocaml
         send_to_worker(request_json);
     }
 
-    void interpreter::handle_execution_output(int request_id, const nl::json& outputs)
+    void interpreter::handle_execution_output(int request_id, const nl::json &outputs)
     {
         auto it = m_pending_requests.find(request_id);
-        if (it == m_pending_requests.end()) return;
-        
+        if (it == m_pending_requests.end())
+            return;
+
         int execution_count = it->second.m_execution_count;
 
         // Process each output item (stdout, stderr, etc.) from the worker's response.
-        for (const auto& output_item : outputs)
+        for (const auto &output_item : outputs)
         {
-            if (!output_item.is_array() || output_item.size() < 2) continue;
-            
-            const std::string& output_type = output_item[0].get<std::string>();
-            const nl::json& output_content = output_item[1];
+            if (!output_item.is_array() || output_item.size() < 2)
+                continue;
 
-            if (output_type == "Stdout") {
+            const std::string &output_type = output_item[0].get<std::string>();
+            const nl::json &output_content = output_item[1];
+
+            if (output_type == "Stdout")
+            {
                 publish_stream("stdout", output_content.get<std::string>());
-            } else if (output_type == "Stderr") {
+            }
+            else if (output_type == "Stderr")
+            {
                 std::string err_msg = output_content.get<std::string>();
                 std::vector<std::string> traceback;
                 std::stringstream ss(err_msg);
                 std::string line;
-                while (std::getline(ss, line, '\n')) {
+                while (std::getline(ss, line, '\n'))
+                {
                     traceback.push_back(line);
                 }
                 publish_execution_error("OCaml Error", err_msg.substr(0, err_msg.find('\n')), traceback);
-            } else if (output_type == "Html") {
+            }
+            else if (output_type == "Html")
+            {
                 display_data({{"text/html", output_content.get<std::string>()}}, {}, {});
-            } else if (output_type == "Meta") {
+            }
+            else if (output_type == "Meta")
+            {
                 publish_execution_result(execution_count, {{"text/plain", output_content.get<std::string>()}}, {});
             }
         }
     }
 
-    void interpreter::handle_final_response(int request_id, const std::string& error_summary)
+    void interpreter::handle_final_response(int request_id, const std::string &error_summary)
     {
         auto it = m_pending_requests.find(request_id);
-        if (it == m_pending_requests.end()) return;
+        if (it == m_pending_requests.end())
+            return;
 
         // Retrieve the original callback and send the final execution reply.
-        auto& cb = it->second.m_callback;
-        if (!error_summary.empty()) {
+        auto &cb = it->second.m_callback;
+        if (!error_summary.empty())
+        {
             cb(xeus::create_error_reply("OCaml Execution Error", "", {error_summary}));
-        } else {
+        }
+        else
+        {
             cb(xeus::create_successful_reply());
         }
         // Clean up the pending request.
         m_pending_requests.erase(it);
     }
 
-    void interpreter::send_jupyterlab_command(const std::string& command)
+    /**
+     * @brief Sends a command to the JupyterLab frontend via a comm channel.
+     *
+     * @param command The string identifier of the command to execute on the frontend.
+     * @param args    An optional JSON object containing arguments for the command.
+     *                If not provided, it defaults to a null JSON object, and the 'args'
+     *                key will not be sent in the payload.
+     */
+    void interpreter::send_jupyterlab_command(const std::string &command, const nl::json &args)
     {
         try
         {
             nl::json data;
             data["command"] = command;
 
+            // Only add the 'args' key to the payload if the args object is not null.
+            // A default-constructed nl::json() is null.
+            if (!args.is_null())
+            {
+                data["args"] = args;
+            }
+
             // Create a new, temporary comm channel to send the command.
             auto it = m_ephemeral_comms.emplace(
-                std::piecewise_construct,
-                std::forward_as_tuple(xeus::new_xguid()),
-                std::forward_as_tuple(comm_manager().target("jupyterlab-commands-executor"))
-            ).first;
+                                           std::piecewise_construct,
+                                           std::forward_as_tuple(xeus::new_xguid()),
+                                           std::forward_as_tuple(comm_manager().target("jupyterlab-commands-executor")))
+                          .first;
 
-            xeus::xcomm& comm = it->second;
+            xeus::xcomm &comm = it->second;
             xeus::xguid id = comm.id();
 
             // The frontend will immediately close the comm; this handler cleans it up on our side.
-            comm.on_close([this, id](const xeus::xmessage&) {
-                this->m_ephemeral_comms.erase(id);
-            });
+            comm.on_close([this, id](const xeus::xmessage &)
+                          { this->m_ephemeral_comms.erase(id); });
 
             // Opening the comm sends the command data to the frontend.
             comm.open({}, data, {});
         }
-        catch (const std::exception& e)
+        catch (const std::exception &e)
         {
             std::cerr << "[C++] ERROR during comm message send: " << e.what() << std::endl;
         }
     }
 
-    nl::json interpreter::complete_request_impl(const std::string& code, int cursor_pos)
+    nl::json interpreter::complete_request_impl(const std::string &code, int cursor_pos)
     {
         m_completion_cache.m_asked = true;
         std::lock_guard<std::mutex> lock(m_completion_cache.m_mutex);
@@ -360,7 +428,6 @@ namespace xeus_ocaml
         // Serve from cache if the request is identical to the previous one.
         if (m_completion_cache.m_code == code && m_completion_cache.m_cursor_pos == cursor_pos)
         {
-            send_jupyterlab_command("tooltip:dismiss");
             return m_completion_cache.m_reply;
         }
 
@@ -377,7 +444,7 @@ namespace xeus_ocaml
         return xeus::create_complete_reply(nl::json::array(), cursor_pos, cursor_pos);
     }
 
-    nl::json interpreter::is_complete_request_impl(const std::string& code)
+    nl::json interpreter::is_complete_request_impl(const std::string &code)
     {
         // Use a simple heuristic: OCaml toplevel code is considered complete if it ends with ';;'.
         auto first_char = code.find_first_not_of(" \t\n\r");
@@ -411,7 +478,6 @@ namespace xeus_ocaml
         return xeus::create_info_reply(
             "5.3", "xocaml", "0.1.0", "ocaml", "5.1.0", "text/x-ocaml", ".ml",
             "ocaml", "ocaml", "", "xeus-ocaml - A WebAssembly OCaml kernel for Jupyter",
-            false, nl::json::array()
-        );
+            false, nl::json::array());
     }
 }

@@ -30,7 +30,10 @@ platforms = [
 [feature.kernel]
 platforms = ["emscripten-wasm32"]
 
-# [feature.kernel.dependencies]
+[feature.kernel.dependencies]
+xeus = "*"
+
+
 # xeus-ocaml = "*"
 #==============================================================================
 # [feature.extension]: JupyterLab Extension
@@ -71,7 +74,7 @@ platforms = ["linux-64"]
 
 [feature.build.dependencies]
 # Core dependencies for building and running JupyterLite.
-jupyterlab = "*"
+jupyterlab = "==4.4.5"
 jupyterlite-xeus = "*"
 jupyter_server = "*"
 ipywidgets = "*"
@@ -83,6 +86,7 @@ rattler-build = "*"
 # The command specifies the emscripten-forge channel for WASM dependencies
 # and targets the emscripten-wasm32 platform.
 build-kernel = """
+rm -rf output && \
 rattler-build build --recipe recipe/recipe.yaml \
             -c https://repo.prefix.dev/emscripten-forge-dev \
             -c conda-forge \
@@ -94,7 +98,9 @@ rattler-build upload prefix --api-key=$PREFIX_API_KEY -c xeus-ocaml output/emscr
 """
 # Installs the locally built kernel into the 'kernel' environment.
 install-kernel = """
-pixi run -e kernel micromamba install -y  $PIXI_PROJECT_ROOT/output/emscripten-wasm32/xeus-ocaml*
+rm -rf .pixi/envs/kernel && \
+micromamba clean -a -y && \
+pixi run -e kernel micromamba install -y  --offline --no-channel-priority  $PIXI_PROJECT_ROOT/output/emscripten-wasm32/xeus-ocaml*.conda
 """
 # Builds the static JupyterLite site.
 # It cleans previous build artifacts and points to the WASM kernel
@@ -111,6 +117,13 @@ pixi run build-kernel && \
 pixi run install-kernel && \
 pixi run build-jupyterlite
 """ 
+
+build-all-serve = """pixi run build-extension && \
+pixi run build-kernel && \
+pixi run install-kernel && \
+pixi run serve-jupyterlite
+"""
+
 ###############################################################################
 # Environments
 # Environments are concrete instances that combine one or more features.

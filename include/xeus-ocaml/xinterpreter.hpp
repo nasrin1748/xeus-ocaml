@@ -181,9 +181,9 @@ namespace xeus_ocaml
         /**
          * @brief Sends a command to the JupyterLab frontend via a temporary comm channel.
          * @param command The JupyterLab command ID to execute (e.g., "completer:invoke-notebook").
+         * @param args Args for the JupyterLab command
          */
-        void send_jupyterlab_command(const std::string& command);
-
+        void send_jupyterlab_command(const std::string& command, const nl::json& args = nl::json());
         /**
          * @brief Maps a Merlin completion kind to a JupyterLab completion icon name.
          * @param kind_json The JSON representation of the Merlin completion kind.
@@ -243,6 +243,8 @@ namespace xeus_ocaml
         inspection_cache m_inspection_cache;
         /// Manages the lifecycle of temporary comms used for sending commands to the frontend.
         std::map<xeus::xguid, xeus::xcomm> m_ephemeral_comms;
+        bool tooltip_requested = false;
+
 
         /** @} */
 
