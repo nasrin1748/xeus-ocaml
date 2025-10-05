@@ -27,7 +27,10 @@ jobs:
         with:
           cache: true
 
-      - name: Build all
+      - name: Build xocaml.js
+        run: pixi run -e ocaml setup &&  pixi run -e ocaml release
+      
+      - name: Build kernel & jupyterlite
         run: pixi run build-all
 
       - name: Setup GitHub Pages

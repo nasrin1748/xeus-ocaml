@@ -8,8 +8,6 @@
   
   "language": "ocaml",
   "metadata": {"debugger": false,
-  "shared": {
-    "x-ocaml.worker+effects.js": "lib/x-ocaml.worker+effects.js"
-  }
+  "shared": @XEUS_OCAML_SHARED_METADATA@
   }
 }

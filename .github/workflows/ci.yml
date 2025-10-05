@@ -1,26 +1,26 @@
-name: Continuous Integration and Auto-Tagging
+name: CI and Auto-Tagging
 
 on:
   push:
     branches: ["main"]
+  pull_request:
+    branches: ["main"]
   workflow_dispatch:
 
 permissions:
-  contents: write # Needed to push tags
+  contents: write # Needed to push tags for the 'tag_release' job
 
 jobs:
-  ci_build_and_tag:
-    name: Build, Test, and Auto-Tag
+  build_and_test:
+    name: Build and Test
     runs-on: ubuntu-latest
     
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.PAT }} # Use PAT to allow triggering the release workflow
-          fetch-depth: 0
 
       - name: Install CMake
+        # rattler-build or its dependencies might require CMake
         uses: ssrobins/install-cmake@v1
 
       - name: Setup Pixi environment
@@ -28,50 +28,69 @@ jobs:
         with:
           cache: true
 
-      - name: Check for changed files
-        uses: dorny/paths-filter@v3
+      - name: Setup OCaml Environment
+        # Runs 'opam init' and locks dependencies as defined in the 'ocaml' feature
+        run: pixi run -e ocaml setup
+      
+      - name: Build OCaml to JavaScript
+        # This builds the JS files needed for the tests
+        run: pixi run -e ocaml build
+      
+      - name: Run JavaScript Tests
+        # Runs 'npm install && npm test' in the 'test' environment
+        run: pixi run -e test test
+
+      - name: Build WASM Kernel and JupyterLite
+        # This is a full integration test. It runs the 'build-all' task which:
+        # 1. Builds the WASM kernel package ('build-kernel')
+        # 2. Installs it into a local environment ('install-kernel')
+        # 3. Builds the complete JupyterLite site ('build-jupyterlite')
+        run: pixi run build-all
+
+  tag_release:
+    name: Create Release Tag
+    runs-on: ubuntu-latest
+    # This job depends on the build_and_test job succeeding
+    needs: build_and_test
+    # Only run this job on pushes to the main branch, not on pull requests
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          # Use a Personal Access Token (PAT) to allow this job to push a tag,
+          # which can in turn trigger a release workflow.
+          token: ${{ secrets.PAT }}
+          fetch-depth: 0
+
+      - name: Check for recipe version change
         id: filter
+        uses: dorny/paths-filter@v3
         with:
           filters: |
-            kernel:
-              - 'src/**'
-              - 'include/**'
-              - 'CMakeLists.txt'
-              - 'pixi.toml'
-            extension:
-              - 'extension/**'
             recipe:
               - 'recipe/recipe.yaml'
 
+      - name: Continue only if recipe changed
+        if: steps.filter.outputs.recipe != 'true'
+        run: echo "Recipe version did not change. Skipping tagging." && exit 0
 
-
-      - name: Install & Build JupyterLab extension (if source changed)
-        if: steps.filter.outputs.extension == 'true'
-        run: |
-          pixi run build-extension
-
-      - name: Build and install kernel (if source changed)
-        if: steps.filter.outputs.kernel == 'true'
-        run: |
-          pixi run build-kernel
-          pixi run install-kernel
-
-      - name: Extract version from recipe (if recipe changed)
-        if: steps.filter.outputs.recipe == 'true'
+      - name: Extract version from recipe
         id: get_version
         uses: mikefarah/yq@v4
         with:
           cmd: yq e '.context.version' 'recipe/recipe.yaml'
 
-      - name: Create and Push Tag on Version Bump (if recipe changed)
-        if: steps.filter.outputs.recipe  == 'true'
+      - name: Create and Push Tag on Version Bump
         run: |
           VERSION=${{ steps.get_version.outputs.result }}
           TAG="v${VERSION}"
           echo "Version from recipe is ${VERSION}"
           
-          if git rev-parse "${TAG}" >/dev/null 2>&1; then
-            echo "Tag ${TAG} already exists. No new tag will be created."
+          # Check if the tag already exists in the remote repository
+          if git ls-remote --tags origin | grep -q "refs/tags/${TAG}$"; then
+            echo "Tag ${TAG} already exists remotely. No new tag will be created."
           else
             echo "Tag ${TAG} does not exist. Creating and pushing new tag."
             git config --global user.name "github-actions[bot]"

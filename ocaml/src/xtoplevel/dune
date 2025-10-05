@@ -1,0 +1,9 @@
+(library
+ (name xtoplevel)
+ (public_name xocaml.xtoplevel)
+ (preprocess (pps js_of_ocaml-ppx))
+ (libraries
+  xocaml.protocol
+  js_of_ocaml
+  js_of_ocaml-toplevel
+  ))

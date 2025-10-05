@@ -1,0 +1,19 @@
+(executable
+ (name xocaml)
+ (modules xocaml)
+ (modes js)
+ (libraries
+  xmerlin
+  xtoplevel
+  merlin-lib.utils
+  protocol
+  yojson
+  js_of_ocaml
+  js_of_ocaml-ppx
+  js_of_ocaml-toplevel
+  js_of_ocaml-lwt
+ )
+ (preprocess (pps js_of_ocaml-ppx lwt_ppx))
+
+(js_of_ocaml
+ (flags --toplevel)))

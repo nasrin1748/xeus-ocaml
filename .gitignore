@@ -46,7 +46,7 @@ output/
 _output/
 
 .jupyterlite.doit.db
-
+.opam
 .pixi/
 _build/
 .vscode/
@@ -55,3 +55,11 @@ _build/
 output/
 extension/lib/
 tsconfig.tsbuildinfo
+
+*.bc*
+node_modules
+index.js
+.pixi
+.vscode
+dev-tools.locks
+dune.lock

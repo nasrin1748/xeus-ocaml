@@ -1,73 +1,108 @@
 # pixi.toml: Project configuration for the xeus-ocaml Jupyter kernel.
-# This file defines dependencies, build tasks, and environments for both
-# native development and WebAssembly compilation.
+#
+# This file defines the project's dependencies, build tasks, and environments.
+# It is structured to support both native OCaml development and the compilation
+# of the kernel to WebAssembly (WASM) for use in JupyterLite.
+
+###############################################################################
+### [project]: Core Project Metadata
+###############################################################################
 [project]
 # The name of the project.
 name = "xeus-ocaml"
-# List of conda channels to search for packages.
-# Order matters: pixi will search them in the specified sequence.
+
+# A list of conda channels to search for packages.
+# Pixi searches these channels in the specified order.
 channels = [
     "conda-forge",
-    "https://repo.prefix.dev/emscripten-forge-dev", # Channel for Emscripten (WASM) specific packages
-]
-# Target platforms for which this project can be built.
-platforms = [
-    "linux-64",         # For the local development environment and extension build
-    "emscripten-wasm32" # For the WebAssembly kernel
+    "https://repo.prefix.dev/emscripten-forge-dev", # Provides Emscripten (WASM) specific packages.
 ]
 
+# Target platforms for which this project can be built.
+platforms = [
+    "linux-64",         # For the local development environment and native builds.
+    "emscripten-wasm32", # For the WebAssembly version of the kernel.
+]
+
+
 ###############################################################################
-# Feature Definitions
+### Feature Definitions
+#
 # Features are modular blocks of configuration (e.g., dependencies, tasks)
-# that can be combined to create different environments.
+# that can be combined to create different, isolated environments.
 ###############################################################################
 
 #==============================================================================
-# [feature.kernel]: WASM Kernel
+# [feature.ocaml]: Native OCaml Development Environment
+# This feature provides the tools and tasks needed for native OCaml
+# development, including setting up the OPAM environment and building the
+# OCaml source code.
+#==============================================================================
+[feature.ocaml]
+platforms = ["linux-64"]
+
+[feature.ocaml.dependencies]
+opam = "*"        # The OCaml Package Manager.
+xorg-libx11 = "*" # System dependencies required by some OCaml libraries.
+xorg-xproto = "*" # System dependencies required by some OCaml libraries.
+
+[feature.ocaml.tasks]
+# Initializes the OPAM environment and installs locked dependencies.
+setup = { cmd = """
+rm -rf $OPAMROOT && \
+opam init --disable-sandboxing --no --compiler=5.3.0 && 
+opam install dune && \
+opam exec -- dune pkg lock
+""", cwd = "ocaml" }
+
+# Cleans the OCaml project build artifacts.
+clean = { cmd = "opam exec -- dune clean --root $OCAML_DIR", cwd = "ocaml" }
+
+# Builds the OCaml project (specifically the JavaScript target).
+build = { cmd = "opam exec -- dune build @js --root $OCAML_DIR", cwd = "ocaml" }
+
+# Creates a release build of the OCaml project.
+release = { cmd = "opam exec -- dune build @js --profile release --root $OCAML_DIR", cwd = "ocaml" }
+
+# Starts a simple Python web server to test the 'playground' example.
+playground = { cmd = "python3 -m http.server -d $OCAML_DIR/playground " }
+
+
+#==============================================================================
+# [feature.test]: JavaScript Test Environment
+# This feature sets up an environment for running JavaScript-based tests
+# using Jest, likely for testing the JavaScript output of the OCaml code.
+#==============================================================================
+[feature.test]
+platforms = ["linux-64"]
+
+[feature.test.dependencies]
+# The JavaScript testing framework.
+jest = "*"
+
+[feature.test.tasks]
+# Installs npm packages and runs the test suite.
+test = { cmd = "npm install && npm test", cwd = "ocaml/tests" }
+
+
+#==============================================================================
+# [feature.kernel]: WASM Kernel Runtime Environment
 # Defines the dependencies for the WebAssembly-based Jupyter kernel.
-# This feature is specifically for the emscripten-wasm32 platform.
+# This feature is exclusively for the emscripten-wasm32 platform and represents
+# the final runtime environment for the kernel inside JupyterLite.
 #==============================================================================
 [feature.kernel]
 platforms = ["emscripten-wasm32"]
 
 [feature.kernel.dependencies]
+# The core C++ framework for writing Jupyter kernels.
 xeus = "*"
 
 
-# xeus-ocaml = "*"
-#==============================================================================
-# [feature.extension]: JupyterLab Extension
-# Defines the environment and tasks for developing the JupyterLab extension.
-# This is intended for a native linux-64 development environment.
-#==============================================================================
-[feature.extension]
-platforms = ["linux-64"]
-
-[feature.extension.dependencies]
-# Node.js is required for JupyterLab extension development.
-nodejs = "20.*"
-# Templating tool used for project scaffolding.
-copier = "9.*"
-# Jinja2 extension for time-related functions.
-jinja2-time = "*"
-# Python package installer.
-pip = "*"
-# The JupyterLab frontend.
-jupyterlab = "*"
-
-[feature.extension.tasks]
-# Installs Node.js dependencies for the JupyterLab extension.
-# It cleans the environment before installing to ensure a fresh state.
-setup-extension = { cmd = "truncate -s 0 yarn.lock && rm -rf node_modules && jlpm install", cwd = "extension" }
-
-# Builds the production version of the JupyterLab extension.
-# This task depends on 'setup-extension' to ensure dependencies are installed first.
-build-extension = { cmd = "jlpm build:prod && jupyter labextension build .", cwd = "extension", depends-on = ["setup-extension"] }
-
 #==============================================================================
 # [feature.build]: JupyterLite Build Environment
-# Defines the environment and tasks required to build the WASM kernel
-# and the final JupyterLite website.
+# Defines the tools and tasks required to build the WASM kernel package
+# and assemble the final JupyterLite website.
 #==============================================================================
 [feature.build]
 platforms = ["linux-64"]
@@ -78,13 +113,13 @@ jupyterlab = "==4.4.5"
 jupyterlite-xeus = "*"
 jupyter_server = "*"
 ipywidgets = "*"
-# The rattler-build tool is used to build conda packages from recipes.
+
+# The rattler-build tool is used to build conda packages from recipe files.
 rattler-build = "*"
 
 [feature.build.tasks]
-# Builds the xeus-ocaml WASM kernel using a recipe file.
-# The command specifies the emscripten-forge channel for WASM dependencies
-# and targets the emscripten-wasm32 platform.
+# Builds the xeus-ocaml WASM kernel as a conda package using a recipe.
+# It targets the emscripten-wasm32 platform and uses the necessary channels.
 build-kernel = """
 rm -rf output && \
 rattler-build build --recipe recipe/recipe.yaml \
@@ -93,51 +128,72 @@ rattler-build build --recipe recipe/recipe.yaml \
             --target-platform emscripten-wasm32
 """
 
-upload-kernel = """
-rattler-build upload prefix --api-key=$PREFIX_API_KEY -c xeus-ocaml output/emscripten-wasm32/xeus-ocaml*
-"""
-# Installs the locally built kernel into the 'kernel' environment.
+# Uploads the newly built kernel package to a private prefix.dev channel.
+upload-kernel = "rattler-build upload prefix --api-key=$PREFIX_API_KEY -c xeus-ocaml output/emscripten-wasm32/xeus-ocaml*"
+
+# Installs the locally built kernel package into the dedicated 'kernel' environment.
+# This makes it available for JupyterLite to bundle.
 install-kernel = """
 rm -rf .pixi/envs/kernel && \
 micromamba clean -a -y && \
-pixi run -e kernel micromamba install -y  --offline --no-channel-priority  $PIXI_PROJECT_ROOT/output/emscripten-wasm32/xeus-ocaml*.conda
+pixi run -e kernel micromamba install -y --offline --no-channel-priority $PIXI_PROJECT_ROOT/output/emscripten-wasm32/xeus-ocaml*.conda
 """
-# Builds the static JupyterLite site.
+
+# Builds the static JupyterLite website.
 # It cleans previous build artifacts and points to the WASM kernel
-# located in the .pixi/envs/kernel directory.
+# located in the isolated '.pixi/envs/kernel' directory.
 build-jupyterlite = { cmd = "rm -fr _output && rm -f .jupyterlite.doit.db && jupyter lite build --XeusAddon.prefix=.pixi/envs/kernel" }
 
 # Serves the JupyterLite site locally for development and testing.
-# This provides a quick way to test the WASM kernel in a live environment.
+# This provides a quick way to test the WASM kernel in a live browser environment.
 serve-jupyterlite = { cmd = "rm -fr _output && rm -f .jupyterlite.doit.db && jupyter lite serve --XeusAddon.prefix=.pixi/envs/kernel" }
 
+# A convenience task to run the entire build process in sequence.
 build-all = """
-pixi run build-extension && \
 pixi run build-kernel && \
 pixi run install-kernel && \
 pixi run build-jupyterlite
-""" 
+"""
 
-build-all-serve = """pixi run build-extension && \
+# A convenience task to run the entire build process and then serve the result.
+build-all-serve = """
 pixi run build-kernel && \
 pixi run install-kernel && \
 pixi run serve-jupyterlite
 """
 
+
 ###############################################################################
-# Environments
+### [environments]: Environment Definitions
+#
 # Environments are concrete instances that combine one or more features.
-# You can activate an environment using `pixi shell <name>`.
+# You can activate an environment using `pixi shell <name>` or run tasks
+# within it using `pixi run -e <name> <task>`.
 ###############################################################################
 [environments]
-# The 'default' environment is activated when you run `pixi shell` or `pixi run`.
-# It contains the tools for building the kernel and the JupyterLite site.
+# The 'default' environment is activated with `pixi shell`.
+# It contains all the tools needed to build the JupyterLite site.
 default = { features = ["build"] }
 
-# The 'kernel' environment contains only the WASM-compiled kernel and its dependencies.
-# It is isolated to be bundled into the JupyterLite site.
+# The 'kernel' environment is a minimal, isolated environment containing
+# only the WASM-compiled kernel and its runtime dependencies.
 kernel = { features = ["kernel"] }
 
-# The 'extension' environment provides the necessary tools (like Node.js)
-# for developing the JupyterLab frontend extension.
-extension = { features = ["extension"] }
+# The 'ocaml' environment is for native OCaml development.
+ocaml = { features = ["ocaml"] }
+
+# The 'test' environment is for running the JavaScript tests.
+test = { features = ["test"] }
+
+
+###############################################################################
+### [activation]: Activation Scripts and Variables
+#
+# Defines environment variables that will be set automatically when any pixi
+# environment is activated.
+###############################################################################
+[activation.env]
+# Sets a variable pointing to the OCaml source directory.
+OCAML_DIR = "$PIXI_PROJECT_ROOT/ocaml"
+# Sets the root directory for the OCaml Package Manager (OPAM).
+OPAMROOT = "$PIXI_PROJECT_ROOT/.opam"

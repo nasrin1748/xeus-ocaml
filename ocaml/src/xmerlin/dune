@@ -1,0 +1,21 @@
+(library
+ (name xmerlin)
+ (public_name xocaml.xmerlin)
+ (modules xmerlin)
+ (js_of_ocaml
+  (javascript_files stubs.js))
+ (preprocess (pps js_of_ocaml-ppx lwt_ppx ))
+ (libraries
+  protocol
+  static_files 
+  dynamic_modules
+  merlin-lib.kernel
+  merlin-lib.utils
+  merlin-lib.query_protocol
+  merlin-lib.query_commands
+  merlin-lib.commands
+  merlin-lib.ocaml_parsing
+  js_of_ocaml
+  js_of_ocaml-lwt
+  js_of_ocaml-ppx 
+  yojson))

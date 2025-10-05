@@ -1,0 +1,14 @@
+(data_only_dirs stdlib)
+
+(rule
+ (target dynamic_modules.ml)
+ (deps
+  gen_dynamic.ml
+  (glob_files stdlib/*.cmi))
+ (action
+  (run ocaml %{dep:gen_dynamic.ml})))
+
+(library
+ (name dynamic_modules)
+ (public_name xocaml.xmerlin.dynamic_modules)
+ (modules dynamic_modules))

@@ -35,6 +35,37 @@ if (NOT DEFINED XEUS_OCAML_KERNELSPEC_PATH)
     set(XEUS_OCAML_KERNELSPEC_PATH "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_BINDIR}/")
 endif ()
 
+# 1. Define the directory where the files are located
+set(MERLIN_STDLIB_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ocaml/src/xmerlin/dynamic/stdlib")
+
+# 2. Find all files in that directory.
+#    CONFIGURE_DEPENDS ensures that if files are added/removed, CMake will re-run.
+file(GLOB STDLIB_FILES CONFIGURE_DEPENDS "${MERLIN_STDLIB_DIR}/*")
+
+# 3. Loop through the files and build a list of JSON key-value pairs
+set(JSON_PAIRS "")
+foreach(filepath ${STDLIB_FILES})
+    # Get just the filename from the full path
+    get_filename_component(filename ${filepath} NAME)
+    # Create the JSON pair string: "filename.txt": "lib/filename.txt"
+    # We escape the quotes for the CMake string.
+    list(APPEND JSON_PAIRS "\"${filename}\": \"lib/stdlib/${filename}\"")
+endforeach()
+
+# 4. Join the pairs with a comma and space
+string(JOIN ", " JSON_PAIRS_STRING ${JSON_PAIRS})
+
+# 5. Wrap the final string in curly braces to form a valid JSON object
+#    This variable will replace the placeholder in kernel.json.in
+set(XEUS_OCAML_SHARED_METADATA "{${JSON_PAIRS_STRING}}")
+
+# For debugging, you can print the generated string
+message(STATUS "Generated shared metadata: ${XEUS_OCAML_SHARED_METADATA}")
+
+# --- END: New logic ---
+
+
+
 configure_file (
     "${CMAKE_CURRENT_SOURCE_DIR}/share/jupyter/kernels/xocaml/kernel.json.in"
     "${CMAKE_CURRENT_SOURCE_DIR}/share/jupyter/kernels/xocaml/kernel.json"
@@ -286,7 +317,7 @@ target_link_options(xocaml
     PUBLIC "SHELL: -s MAIN_MODULE=1"
     PUBLIC "SHELL: -s NO_EXIT_RUNTIME=1"
     PUBLIC "SHELL: -s FORCE_FILESYSTEM=1"
-    PUBLIC "SHELL:--pre-js ${CMAKE_CURRENT_SOURCE_DIR}/src/pre.js"
+    PUBLIC "SHELL:--pre-js ${CMAKE_CURRENT_SOURCE_DIR}/ocaml/xocaml.js"
     PUBLIC "SHELL:--post-js ${CMAKE_CURRENT_SOURCE_DIR}/src/post.js"
 )
 
@@ -367,8 +398,8 @@ if(EMSCRIPTEN)
     install(TARGETS xocaml
             ARCHIVE DESTINATION ${XEUS_OCAML_CMAKECONFIG_INSTALL_DIR})
 
-    install(FILES
-            "${CMAKE_CURRENT_SOURCE_DIR}/src/x-ocaml.worker+effects.js"
+    install(DIRECTORY
+            "${CMAKE_CURRENT_SOURCE_DIR}/ocaml/src/xmerlin/dynamic/stdlib"
             DESTINATION ${CMAKE_INSTALL_LIBDIR})
 
     install(FILES

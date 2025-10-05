@@ -1,0 +1,16 @@
+{
+      "name": "app",
+    "version": "0.0.1",
+    "browser": {
+        "fs": false,
+        "constants": false,
+        "child_process": false,
+        "tty": false
+    },
+  "scripts": {
+    "test": "jest"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}
