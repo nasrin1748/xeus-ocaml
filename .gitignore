@@ -54,5 +54,4 @@ _build/
 *node_modules/
 output/
 extension/lib/
-share/jupyter/labextensions/@jupyterlite/xeus-ocaml/
 tsconfig.tsbuildinfo
