@@ -7,4 +7,3 @@
 (alias
  (name js)
  (deps xocaml.js))
-

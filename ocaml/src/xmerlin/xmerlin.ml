@@ -43,6 +43,7 @@ let async_get url : string option Lwt.t =
 
 let filename_of_module_base mod_name =
   if mod_name = "Stdlib" then "stdlib"
+  else if mod_name = "Xlib" then "xlib"
   else "stdlib__" ^ mod_name
 
 

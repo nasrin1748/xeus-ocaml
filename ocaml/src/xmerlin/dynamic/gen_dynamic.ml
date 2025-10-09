@@ -18,6 +18,7 @@ let () =
                 | ["stdlib"] -> "Stdlib" :: acc
                 | ["stdlib"; ""; mod_part] when mod_part <> "" ->
                     String.capitalize_ascii mod_part :: acc
+                | ["xlib"] -> "Xlib" :: acc
                 | _ -> acc
               else acc)
             [] files

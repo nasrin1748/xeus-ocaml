@@ -4,6 +4,8 @@
  (preprocess (pps js_of_ocaml-ppx))
  (libraries
   xocaml.protocol
+  xocaml.lib
   js_of_ocaml
   js_of_ocaml-toplevel
   ))
+

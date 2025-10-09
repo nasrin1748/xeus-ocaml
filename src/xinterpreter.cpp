@@ -168,7 +168,7 @@ namespace xeus_ocaml
         }
     }
 
-    void interpreter::handle_execution_output(int request_id, const nl::json &outputs)
+     void interpreter::handle_execution_output(int request_id, const nl::json &outputs)
     {
         auto it = m_pending_requests.find(request_id);
         if (it == m_pending_requests.end()) return;
@@ -179,10 +179,29 @@ namespace xeus_ocaml
         {
             if (!output_item.is_array() || output_item.size() != 2) continue;
             const std::string &output_type = output_item[0].get<std::string>();
-            const std::string &content = output_item[1].get<std::string>();
-            if (output_type == "Stdout") publish_stream("stdout", content);
-            else if (output_type == "Stderr") publish_stream("stderr", content);
-            else if (output_type == "Value") publish_execution_result(execution_count, {{"text/plain", content}}, {});
+            XOCAML_LOG("handle_execution_output", "Output type: " + output_type);
+
+            if (output_type == "Stdout")
+            {
+                const std::string &content = output_item[1].get<std::string>();
+                publish_stream("stdout", content);
+            }
+            else if (output_type == "Stderr")
+            {
+                const std::string &content = output_item[1].get<std::string>();
+                publish_stream("stderr", content);
+            }
+            else if (output_type == "Value")
+            {
+                const std::string &content = output_item[1].get<std::string>();
+                publish_execution_result(execution_count, {{"text/plain", content}}, {});
+            }
+            else if (output_type == "DisplayData")
+            {
+                const nl::json& data_bundle = output_item[1];
+                XOCAML_LOG("handle_execution_output", "Publishing DisplayData bundle: " + data_bundle.dump());
+                this->display_data(data_bundle, {}, {});
+            }
         }
     }
 

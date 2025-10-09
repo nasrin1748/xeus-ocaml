@@ -1,8 +1,9 @@
-# ![xeus-ocaml logo](https://raw.githubusercontent.com/davy39/xeus-ocaml/refs/heads/main/share/jupyter/kernels/xocaml/logo-64x64.png) xeus-ocaml
+
+# ![xeus-logo](https://raw.githubusercontent.com/jupyter-xeus/xeus/refs/heads/main/docs/source/xeus.svg) OCAML ![xeus-ocaml logo](https://raw.githubusercontent.com/davy39/xeus-ocaml/refs/heads/main/share/jupyter/kernels/xocaml/logo-64x64.png)
 
 [![CI and Auto-Tagging](https://github.com/davy39/xeus-ocaml/actions/workflows/ci.yml/badge.svg)](https://github.com/davy39/xeus-ocaml/actions/workflows/ci.yml)
 [![Release and Deploy](https://github.com/davy39/xeus-ocaml/actions/workflows/release.yml/badge.svg)](https://github.com/davy39/xeus-ocaml/actions/workflows/release.yml)
-[![GitHub Pages](https://img.shields.io/badge/github--pages-deployed-success)](https://davy39.github.io/xeus-ocaml/)
+[![lite-badge](https://jupyterlite.rtfd.io/en/latest/_static/badge.svg)](https://davy39.github.io/xeus-ocaml/)
 
 `xeus-ocaml` is a Jupyter kernel for the OCaml programming language that runs entirely in the web browser through WebAssembly. It is built on the `xeus-lite` library, a lightweight C++ implementation of the Jupyter protocol for WASM environments.
 
@@ -19,7 +20,49 @@ Experience `xeus-ocaml` firsthand in your browser by visiting the JupyterLite de
 *   **Fully Browser-Based**: Runs entirely in the browser with no server-side installation, powered by WebAssembly.
 *   **Interactive OCaml Toplevel**: Execute OCaml code interactively, with persistent state between cells.
 *   **Rich Language Intelligence**: Provides code completion and inspection (tooltips on hover/Shift+Tab) through an integrated Merlin engine.
-*   **JupyterLite Integration**: Designed for seamless use within the JupyterLite environment.
+*   **Rich Display Support**: Render HTML, Markdown, SVG, JSON, and even complex plots like Vega-Lite directly from your OCaml code.
+
+## 📊 Rich Display and Visualization
+
+The kernel comes with a built-in `Xlib` library that is **automatically opened** on startup, so its functions are immediately available in the global scope. This library provides a simple API for rendering a wide variety of rich outputs in your notebook cells.
+
+Here are some of the key functions available:
+
+| Function                | Description                                                |
+| ----------------------- | ---------------------------------------------------------- |
+| `output_html s`         | Renders a raw HTML string `s`.                             |
+| `output_markdown s`     | Renders a Markdown string `s`.                             |
+| `output_svg s`          | Renders an SVG image from its XML string `s`.              |
+| `output_json s`         | Renders a JSON string `s` as a collapsible tree view.      |
+| `output_vegalite s`     | Renders an interactive Vega-Lite plot from a JSON spec `s`.|
+| `output_png_base64 s`   | Displays a PNG image from a Base64-encoded string `s`.     |
+| `output_jpeg_base64 s`  | Displays a JPEG image from a Base64-encoded string `s`.    |
+
+#### Example Usage
+
+You can call these functions directly in any cell to produce rich outputs.
+
+```ocaml
+(* Render an interactive Vega-Lite chart *)
+let vega_spec = {|
+  {
+    "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
+    "description": "A simple bar chart with embedded data.",
+    "data": {
+      "values": [
+        {"a": "A", "b": 28}, {"a": "B", "b": 55}, {"a": "C", "b": 43},
+        {"a": "D", "b": 91}, {"a": "E", "b": 81}, {"a": "F", "b": 53}
+      ]
+    },
+    "mark": "bar",
+    "encoding": {
+      "x": {"field": "a", "type": "nominal", "axis": {"labelAngle": 0}},
+      "y": {"field": "b", "type": "quantitative"}
+    }
+  }
+|} in
+output_vegalite vega_spec
+```
 
 ## 🏗️ Architecture
 
@@ -64,17 +107,29 @@ This project uses the `pixi` package and environment manager to streamline devel
     ```bash
     pixi run -e ocaml build
     ```
+4.  **Build the Kernel**
+    This build the kernel and create a conda package.
+    ```bash
+    pixi run build-kernel
+    ```
+5.  **Install the kernel**
+    This install the kernel to be used with Jupyterlite.
+    ```bash
+    pixi run install-kernel
+    ```
+6.  **Serve Jupyterlite**
+    This build and serve the Jupyterlite interface.
+    ```bash
+    pixi run install-kernel
+    ```
+    You can now access the local JupyterLite instance in your browser, typically at `http://localhost:8000`.
 
-4.  **Build the WASM Kernel and Serve JupyterLite**
-    This is a convenience command that performs all remaining steps:
-    *   Builds the C++ kernel to WASM using `rattler-build`.
-    *   Packages the kernel and `xocaml.js` into a conda package.
-    *   Installs the package into a local environment.
-    *   Builds and launches a local JupyterLite server.
+7.  **All in one command**
+    This is a convenience command that performs all steps:
     ```bash
     pixi run build-all-serve
     ```
-    You can now access the local JupyterLite instance in your browser, typically at `http://localhost:8000`.
+
 
 ## 🧪 Testing
 
@@ -91,6 +146,7 @@ pixi run -e test test
 -   [x] Interactive code execution via the `js_of_ocaml` toplevel.
 -   [x] Code completion powered by an in-browser Merlin instance.
 -   [x] Code inspection for tooltips (Shift+Tab) and the inspector panel.
+-   [x] **Rich Outputs**: Display HTML, Markdown, SVG, JSON, and Vega-Lite plots directly from OCaml code using the auto-opened `Xlib` module.
 
 ### Future Work
 -   [ ] **Library Management**: Implement a mechanism to dynamically fetch and load pre-compiled OCaml libraries from within a notebook session (e.g., via `#require`).

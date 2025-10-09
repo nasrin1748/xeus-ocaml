@@ -1,0 +1,21 @@
+
+(rule
+(alias merlin_files)
+ (mode promote) 
+ (target xlib.cmi)
+ (action
+  (copy %{lib:xocaml.lib:xlib.cmi} %{target})))
+
+(rule
+(alias merlin_files)
+ (mode promote) 
+ (target xlib.cmt)
+ (action
+  (copy %{lib:xocaml.lib:xlib.cmt} %{target})))
+
+(rule
+(alias merlin_files)
+ (mode promote) 
+ (target xlib.cmti)
+ (action
+  (copy %{lib:xocaml.lib:xlib.cmti} %{target})))

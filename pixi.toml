@@ -59,7 +59,7 @@ opam exec -- dune pkg lock
 clean = { cmd = "opam exec -- dune clean --root $OCAML_DIR", cwd = "ocaml" }
 
 # Builds the OCaml project (specifically the JavaScript target).
-build = { cmd = "opam exec -- dune build @js --root $OCAML_DIR", cwd = "ocaml" }
+build = { cmd = "opam exec -- dune build @js --root $OCAML_DIR --verbose", cwd = "ocaml" }
 
 # Creates a release build of the OCaml project.
 release = { cmd = "opam exec -- dune build @js --profile release --root $OCAML_DIR", cwd = "ocaml" }
@@ -157,6 +157,7 @@ pixi run build-jupyterlite
 
 # A convenience task to run the entire build process and then serve the result.
 build-all-serve = """
+pixi run -e ocaml build &&\
 pixi run build-kernel && \
 pixi run install-kernel && \
 pixi run serve-jupyterlite

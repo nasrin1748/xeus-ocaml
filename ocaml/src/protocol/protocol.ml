@@ -36,6 +36,8 @@ type output =
   | Stdout of string
   | Stderr of string
   | Value of string
+  | DisplayData of Yojson.Safe.t
+
 [@@deriving yojson]
 
 type completions = {
