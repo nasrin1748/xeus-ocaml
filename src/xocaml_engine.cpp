@@ -75,5 +75,18 @@ namespace xeus_ocaml
                 // via the callback mechanism. This catch block is for C++-side exceptions only.
             }
         }
+
+        void mount_fs()
+        {
+            XOCAML_LOG("ocaml_engine", "Calling xocaml.mountFS...");
+            try
+            {
+                emscripten::val::global("xocaml").call<void>("mountFS");
+            }
+            catch(const std::exception& e)
+            {
+                std::cerr << "[xeus-ocaml] Exception in mount_fs: " << e.what() << std::endl;
+            }
+        }
     } // namespace ocaml_engine
 } // namespace xeus_ocaml

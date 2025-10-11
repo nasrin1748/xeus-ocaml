@@ -15,6 +15,7 @@
 #include "nlohmann/json.hpp"
 #include "xeus/xinterpreter.hpp"
 #include "xeus_ocaml_config.hpp"
+#include <emscripten/val.h>
 
 namespace nl = nlohmann;
 
@@ -54,6 +55,14 @@ namespace xeus_ocaml
          */
         void handle_eval_callback(int request_id, const std::string& result_str);
 
+        /**
+         * @brief Public callback handler for the initial setup result.
+         *
+         * This method is invoked when Phase 1 of the OCaml setup completes.
+         * It checks for success and then triggers Phase 2 via the ocaml_engine.
+         */
+        void handle_setup_callback(const std::string& result_str);
+        
     private:
         // Implementation of the xinterpreter interface
         void configure_impl() override;

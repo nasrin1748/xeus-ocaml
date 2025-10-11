@@ -2,6 +2,7 @@ open Merlin_utils.Std
 open Lwt.Syntax
 open Js_of_ocaml
 
+
 let rec yojson_basic_to_safe (json : Yojson.Basic.t) : Yojson.Safe.t =
   match json with
   | `Assoc kvs -> `Assoc (List.map ~f:(fun (k, v) -> (k, yojson_basic_to_safe v)) kvs)
@@ -12,12 +13,10 @@ let rec yojson_basic_to_safe (json : Yojson.Basic.t) : Yojson.Safe.t =
   | `Float f -> `Float f
   | `String s -> `String s
 
-
 let create_response class_name value =
   `Assoc [("class", `String class_name); ("value", value)]
 let create_success_response value = create_response "return" value
 let create_error_response msg = create_response "error" (`String msg)
-
 
 let process_merlin_action_sync (json_str_js : Js.js_string Js.t) : Js.js_string Js.t =
   let json_str = Js.to_string json_str_js in
@@ -52,7 +51,7 @@ let process_toplevel_action_async (json_str_js : Js.js_string Js.t) (callback : 
         | Ok (Protocol.Setup setup_config) ->
           Xtoplevel.setup ~url:setup_config.dsc_url;
           let* () = Xmerlin.setup ~url:setup_config.dsc_url in
-          Lwt.return @@ create_success_response (`String "Setup complete")
+          Lwt.return @@ create_success_response (`String "Setup Phase 1 complete")
         | Ok _ ->
           Lwt.return @@ create_error_response "This action must be handled synchronously."
         | Error msg ->
@@ -71,6 +70,10 @@ let process_toplevel_action_async (json_str_js : Js.js_string Js.t) (callback : 
 let () =
   Js.export "xocaml"
     (object%js
+       (* Synchronous Merlin actions (completion, inspection) *)
        val processMerlinAction = process_merlin_action_sync
+       (* Asynchronous Toplevel actions (evaluation, setup phase 1) *)
        val processToplevelAction = process_toplevel_action_async
+       (* Export the FS mounting function from the Xfs module. *)
+       val mountFS = Xfs.mount_drive
     end)

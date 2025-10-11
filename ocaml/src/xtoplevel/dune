@@ -5,8 +5,10 @@
  (libraries
   xocaml.protocol
   xocaml.lib
+  xocaml.xfs
+  xocaml.xutil
   js_of_ocaml
   js_of_ocaml-toplevel
   js_of_ocaml-lwt
-  ))
+  )  )
 

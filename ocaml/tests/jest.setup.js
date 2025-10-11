@@ -24,7 +24,7 @@ class MockXMLHttpRequest {
     // Simulate the async nature of a network request with setTimeout
     setTimeout(() => {
       // The test server root is the project root. The URL will be relative.
-      const filePath = path.resolve(__dirname, '..', this._url.replace('./', ''));
+      const filePath = path.resolve(__dirname, '..', this._url.replace('ocaml/../', ''));
 
       if (fs.existsSync(filePath)) {
         this.status = 200;
@@ -53,7 +53,7 @@ global.caml_ml_merlin_fs_exact_case = (path) => path;
 global.caml_ml_merlin_fs_exact_case_basename = (path) => 0;
 
 // --- Load the OCaml Kernel and Expose the API (unchanged) ---
-const ocamlKernel = require('../_build/default/src/xocaml/xocaml.bc.js');
+const ocamlKernel = require('../../output/bld/rattler-build_xeus-ocaml/work/ocaml-build/xocaml/xocaml.bc.js');
 global.xocaml_api = {
   merlinSync: ocamlKernel.xocaml.processMerlinAction,
   toplevelAsync: ocamlKernel.xocaml.processToplevelAction,

@@ -50,17 +50,11 @@ jobs:
       - name: Verify Version Consistency
         run: pixi run verify-version
 
-      - name: Setup OCaml Environment
-        run: pixi run -e ocaml setup
-      
-      - name: Build OCaml to JavaScript
-        run: pixi run -e ocaml release
-      
-      - name: Run JavaScript Tests
-        run: pixi run -e test test
-
-      - name: Build WASM Kernel
+      - name: Build Kernel
         run: pixi run build-kernel
+
+      - name: Run JavaScript Tests
+        run: pixi run test
 
       - name: Install Kernel for JupyterLite
         run: pixi run install-kernel
@@ -74,7 +68,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: conda-packages
-          path: output/
+          path: |
+            output/**/*.conda
+            output/**/*.tar.bz2
 
       - name: Upload JupyterLite site artifact
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'

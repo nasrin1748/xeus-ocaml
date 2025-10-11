@@ -59,6 +59,11 @@ namespace xeus_ocaml
          *                 JavaScript-bound callback function to be executed with the result.
          */
         void call_toplevel_async(const nl::json& request, emscripten::val callback);
+
+        /**
+         * @brief Calls the OCaml function to mount the Emscripten FS device.
+         */
+        void mount_fs();
     }
 }
 

@@ -3,7 +3,7 @@
  * @brief Implementation of asynchronous network operations using Lwt and XHR.
  *)
 
-open Util
+open Xutil
 
 (**
  * Asynchronously fetches the content of a given URL.

@@ -10,7 +10,7 @@
 
 open Js_of_ocaml
 open Lwt.Syntax
-open Util
+open Xutil
 
 (* Create a module for string sets for cleaner type annotations and usage. *)
 module S = Set.Make(String)

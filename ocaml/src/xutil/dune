@@ -1,0 +1,8 @@
+(library
+ (name xutil)
+ (public_name xocaml.xutil)
+ (preprocess (pps js_of_ocaml-ppx))
+ (libraries
+  js_of_ocaml
+  ))
+

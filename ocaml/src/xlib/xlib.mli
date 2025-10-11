@@ -1,4 +1,12 @@
 (**
+ * @module Xlib
+ * @description A library of helper functions automatically opened in the
+ *              toplevel for producing rich output and interacting with the
+ *              Jupyter environment.
+ *)
+
+
+(**
  * Internal function for the toplevel to retrieve and clear outputs.
  * This is not intended for direct use by end-users.
  *)

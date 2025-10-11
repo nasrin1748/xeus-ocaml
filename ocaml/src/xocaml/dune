@@ -16,6 +16,6 @@
  )
  (preprocess (pps js_of_ocaml-ppx lwt_ppx))
 
-(js_of_ocaml
+ (js_of_ocaml
  (flags 
  --toplevel )))

@@ -16,7 +16,7 @@ module.exports = {
   // The default is ["/node_modules/"], so we add our path to it.
   transformIgnorePatterns: [
     '/node_modules/',
-    '../_build/default/src/xocaml/xocaml.bc.js'
+    '../../output/bld/rattler-build_xeus-ocaml/work/ocaml-build/xocaml/xocaml.bc.js'
 
   ],
 
@@ -24,7 +24,7 @@ module.exports = {
   // A list of regexp patterns that Jest uses to detect test files.
   // By ignoring these paths, we fix the Haste collision warnings and speed up Jest.
   testPathIgnorePatterns: [
-    '../_build/',
-    '../.opam/',
+    '../../output/',
+    '../../.opam/',
   ],
 };

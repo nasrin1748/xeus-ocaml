@@ -15,26 +15,84 @@ Experience `xeus-ocaml` firsthand in your browser by visiting the JupyterLite de
 
 ## ✨ Features
 
-*   **Fully Browser-Based**: Runs entirely in the browser with no server-side installation, powered by WebAssembly.
-*   **Interactive OCaml Toplevel**: Execute OCaml code interactively, with persistent state between cells.
-*   **Rich Language Intelligence**: Provides code completion and inspection (tooltips on hover/Shift+Tab) through an integrated Merlin engine.
-*   **Dynamic Library Loading**: Load pre-compiled OCaml libraries dynamically using the `#require` directive.
-*   **Rich Display Support**: Render HTML, Markdown, SVG, JSON, and even complex plots like Vega-Lite directly from your OCaml code.
+-   **Interactive OCaml Toplevel**: Execute OCaml code interactively, with persistent state between cells.
+-   **Rich Language Intelligence**: Provides code completion and inspection (tooltips on hover/Shift+Tab) through an integrated Merlin engine.
+-   **Virtual Filesystem**: Use standard OCaml I/O (`open_in`, `Sys.readdir`) for in-browser file operations.
+-   **Dynamic Library Loading**: Load pre-compiled OCaml libraries dynamically using the `#require` directive.
+-   **Rich Display Support**: Render HTML, Markdown, SVG, JSON, and even complex plots like Vega-Lite directly from your OCaml code.
 
-## 📦 Dynamic Libraries with `#require`
+### 💻 Interactive OCaml Toplevel
+
+Evaluate OCaml expressions, define modules, and run functions in an interactive REPL environment. The state of your toplevel is preserved across cells, allowing you to build up your program incrementally.
+
+#### Example
+
+```ocaml
+(* In one cell, define a function *)
+let greet name = "Hello, " ^ name ^ "!";;
+```
+```text
+val greet : string -> string = <fun>
+```
+
+```ocaml
+(* In a subsequent cell, use that function *)
+greet "Jupyter";;
+```
+```text
+- : string = "Hello, Jupyter!"
+```
+
+### 🧠 Rich Language Intelligence
+
+Leverage the power of Merlin directly in your notebook for a modern, editor-like experience.
+
+-   **Code Completion**: Press `Tab` to get context-aware suggestions for module and function names.
+-   **Code Inspection**: Press `Shift+Tab` or hover over an identifier to view its type signature and documentation.
+
+#### Example
+
+```ocaml
+(* Place your cursor after the dot and press Tab *)
+List.
+```
+
+```ocaml
+(* Place your cursor on 'map' and press Shift+Tab *)
+List.map
+```
+A tooltip will appear showing the function's signature, e.g., `('a -> 'b) -> 'a list -> 'b list`, along with its documentation.
+
+### 💾 Virtual Filesystem
+
+The kernel supports standard OCaml file I/O right in the browser. You can use familiar functions like `open_out`, `open_in`, and routines from the `Sys` module to create, read, and manage files in a virtual filesystem that persists for your session.
+
+#### Example
+
+```ocaml
+(* Write to a file *)
+let oc = open_out "my_data.txt" in
+output_string oc "This is a test.";
+close_out oc;;
+
+(* Read it back *)
+let ic = open_in "my_data.txt" in
+let line = input_line ic in
+close_in ic;
+print_endline line;;
+```
+
+### 📦 Dynamic Libraries with `#require`
 
 You can dynamically load additional OCaml libraries that have been pre-compiled to JavaScript. Use the standard toplevel directive `#require` followed by the library name.
-
 
 ```ocaml
 (* Load the ocamlgraph library *)
 #require "ocamlgraph";;
 ```
-
 ```text
-Library 'ocamlgraph' loaded. New modules available: Graph, Graph, Graph__Bitv, Graph__Blocks, Graph__Builder, Graph__ChaoticIteration, Graph__Classic, Graph__Clique, Graph__Cliquetree, Graph__Coloring, Graph__Components, Graph__Contraction, Graph__Cycles, Graph__DGraphModel, Graph__DGraphRandModel, Graph__DGraphSubTree, Graph__DGraphTreeLayout, Graph__DGraphTreeModel, Graph__Delaunay, Graph__Deque, Graph__Dominator, Graph__Dot, Graph__Dot_lexer, Graph__Dot_parser, Graph__Eulerian, Graph__Fixpoint, Graph__Flow, Graph__Gmap, Graph__Gml, Graph__Graphml, Graph__Graphviz, Graph__Heap, Graph__Imperative, Graph__Kruskal, Graph__Leaderlist, Graph__Mcs_m, Graph__Md, Graph__Merge, Graph__Mincut, Graph__Minsep, Graph__Nonnegative, Graph__Oper, Graph__Pack, Graph__Path, Graph__Persistent, Graph__PersistentQueue, Graph__Prim, Graph__Rand, Graph__Strat, Graph__Topological, Graph__Traverse, Graph__Unionfind, Graph__Util, Graph__WeakTopological, Graph__XDot, Graph__XDotDraw
+Library 'ocamlgraph' loaded. New modules available: Graph, ...
 ```
-
 ```ocaml
 (* Now you can use modules from the library *)
 open Graph
@@ -42,7 +100,7 @@ open Graph
 
 This feature relies on the library being available as a `.js` file at a URL accessible to the kernel.
 
-## 📊 Rich Display and Visualization
+### 📊 Rich Display and Visualization
 
 The kernel comes with a built-in `Xlib` library that is **automatically opened** on startup, so its functions are immediately available in the global scope. This library provides a simple API for rendering a wide variety of rich outputs in your notebook cells.
 
@@ -94,12 +152,13 @@ We welcome contributions! If you're interested in the project's architecture, se
 -   [x] Interactive code execution via the `js_of_ocaml` toplevel.
 -   [x] Code completion powered by an in-browser Merlin instance.
 -   [x] Code inspection for tooltips (Shift+Tab) and the inspector panel.
+-   [x] **Virtual Filesystem**: Read and write to the Emscripten virtual filesystem from OCaml using standard library functions (`open_in`, `Sys.readdir`, etc.).
 -   [x] **Rich Outputs**: Display HTML, Markdown, SVG, JSON, and Vega-Lite plots directly from OCaml code using the auto-opened `Xlib` module.
 -   [x] **Library Management**: Dynamically fetch and load pre-compiled OCaml libraries from within a notebook session via the `#require "my_lib";;` directive.
 
 ### Future Work
--   [ ] **Virtual Filesystem**: Expose APIs to read and write to the Emscripten virtual filesystem from OCaml, enabling file manipulation and data loading.
--   [ ] **User Input**: Add support for Jupyter's `input_request` messages to allow interactive OCaml functions like `read_line()`.
+-   [ ] **Dynamic library bundle and load** : Improve and simplify the process of adding new external library to bundle, and load their cmt/cmti for completion and documentation.
+-   [ ] **User Input**: Add support for Jupyter's `input_request` messages to allow interactive OCaml functions like `read_line()` that wait for user input from the console.
 -   [ ] **Custom Widgets**: Develop a communication bridge (`Comm`) to enable OCaml code to interact with Jupyter Widgets for creating rich, interactive outputs.
 
 ## 🙏 Acknowledgements

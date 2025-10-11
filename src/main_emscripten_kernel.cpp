@@ -15,7 +15,6 @@
 #include "xinterpreter.hpp"
 #include "xeus/xembind.hpp"
 
-
 EMSCRIPTEN_BINDINGS(my_module) {
     xeus::export_core();
     using interpreter_type = xeus_ocaml::interpreter;

@@ -83,7 +83,7 @@ jest = "*"
 
 [feature.test.tasks]
 # Installs npm packages and runs the test suite.
-test = { cmd = "npm install && npm test", cwd = "ocaml/tests" }
+test = { cmd = "npm install && jest --runInBand", cwd = "ocaml/tests" }
 
 
 #==============================================================================
@@ -121,12 +121,17 @@ rattler-build = "*"
 [feature.build.tasks]
 # Builds the xeus-ocaml WASM kernel as a conda package using a recipe.
 # It targets the emscripten-wasm32 platform and uses the necessary channels.
+# --no-build-id --keep-build allow caching from one build to another
+# remove wasm & js file to make sure they are rebuilt
 build-kernel = """
-rm -rf output && \
+rm -f output/bld/rattler-build_xeus-ocaml/cxx_cache/xocaml.js && \
+rm -f output/bld/rattler-build_xeus-ocaml/cxx_cache/xocaml.wasm && \
 rattler-build build --recipe recipe/recipe.yaml \
             -c https://repo.prefix.dev/emscripten-forge-dev \
             -c conda-forge \
-            --target-platform emscripten-wasm32
+            --target-platform emscripten-wasm32 \
+            --no-build-id \ 
+            --keep-build
 """
 
 # Uploads the newly built kernel package to a private prefix.dev channel.
@@ -135,7 +140,7 @@ upload-kernel = "rattler-build upload prefix --api-key=$PREFIX_API_KEY -c xeus-o
 # Installs the locally built kernel package into the dedicated 'kernel' environment.
 # This makes it available for JupyterLite to bundle.
 install-kernel = """
-rm -rf .pixi/envs/kernel && \
+rm -rf .pixi/envs/kernel && \ 
 micromamba clean -a -y && \
 pixi run -e kernel micromamba install -y --offline --no-channel-priority $PIXI_PROJECT_ROOT/output/emscripten-wasm32/xeus-ocaml*.conda
 """
@@ -148,6 +153,9 @@ build-jupyterlite = { cmd = "rm -fr _output && rm -f .jupyterlite.doit.db && jup
 # Serves the JupyterLite site locally for development and testing.
 # This provides a quick way to test the WASM kernel in a live browser environment.
 serve-jupyterlite = { cmd = "rm -fr _output && rm -f .jupyterlite.doit.db && jupyter lite serve --XeusAddon.prefix=.pixi/envs/kernel" }
+
+install-serve = {depends-on = ["build-kernel","install-kernel","serve-jupyterlite"]}
+
 
 # A convenience task to run the entire build process in sequence.
 build-all = """
