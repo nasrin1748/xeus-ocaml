@@ -20,6 +20,7 @@ Experience `xeus-ocaml` firsthand in your browser by visiting the JupyterLite de
 -   **Virtual Filesystem**: Use standard OCaml I/O (`open_in`, `Sys.readdir`) for in-browser file operations.
 -   **Dynamic Library Loading**: Load pre-compiled OCaml libraries dynamically using the `#require` directive.
 -   **Rich Display Support**: Render HTML, Markdown, SVG, JSON, and even complex plots like Vega-Lite directly from your OCaml code.
+-   **Graphviz Visualization**: Render graph descriptions written in the DOT language directly as SVG images.
 
 ### 💻 Interactive OCaml Toplevel
 
@@ -111,6 +112,7 @@ Here are some of the key functions available:
 | `output_html s`         | Renders a raw HTML string `s`.                             |
 | `output_markdown s`     | Renders a Markdown string `s`.                             |
 | `output_svg s`          | Renders an SVG image from its XML string `s`.              |
+| `output_dot s`          | Renders a Graphviz DOT language string `s` as an SVG graph.|
 | `output_json s`         | Renders a JSON string `s` as a collapsible tree view.      |
 | `output_vegalite s`     | Renders an interactive Vega-Lite plot from a JSON spec `s`.|
 | `output_png_base64 s`   | Displays a PNG image from a Base64-encoded string `s`.     |
@@ -142,6 +144,28 @@ let vega_spec = {|
 output_vegalite vega_spec
 ```
 
+#### Graphviz (DOT Language) Visualization
+
+You can render graphs described in the DOT language using `output_dot`. The kernel includes a frontend extension that uses `viz.js` to render the DOT string into an SVG image.
+
+```ocaml
+(* Define a simple directed graph in DOT language *)
+let dot_string = {|
+  digraph G {
+    rankdir="LR";
+    a [label="Start"];
+    b [label="Step 2"];
+    c [label="End"];
+    a -> b;
+    b -> c;
+    a -> c [label="shortcut"];
+  }
+|};;
+
+(* Render the graph *)
+output_dot dot_string;;
+```
+
 ## 🛠️ Contributing and Development
 
 We welcome contributions! If you're interested in the project's architecture, setting up a local development environment, or contributing code, please see our **[CONTRIBUTING.md](CONTRIBUTING.md)** guide for detailed information.
@@ -153,7 +177,7 @@ We welcome contributions! If you're interested in the project's architecture, se
 -   [x] Code completion powered by an in-browser Merlin instance.
 -   [x] Code inspection for tooltips (Shift+Tab) and the inspector panel.
 -   [x] **Virtual Filesystem**: Read and write to the Emscripten virtual filesystem from OCaml using standard library functions (`open_in`, `Sys.readdir`, etc.).
--   [x] **Rich Outputs**: Display HTML, Markdown, SVG, JSON, and Vega-Lite plots directly from OCaml code using the auto-opened `Xlib` module.
+-   [x] **Rich Outputs**: Display HTML, Markdown, SVG, JSON, Vega-Lite plots, and graphviz dot graphs directly from OCaml code using the auto-opened `Xlib` module.
 -   [x] **Library Management**: Dynamically fetch and load pre-compiled OCaml libraries from within a notebook session via the `#require "my_lib";;` directive. Try it with `ocamlgraph`
 
 ### Future Work

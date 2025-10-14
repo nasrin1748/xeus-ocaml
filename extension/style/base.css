@@ -1,0 +1,16 @@
+/*
+    See the JupyterLab Developer Guide for useful CSS Patterns:
+
+    https://jupyterlab.readthedocs.io/en/stable/developer/css.html
+*/
+
+.mimerenderer-graphviz-dot {
+  overflow: auto;
+  background-color: var(--jp-layout-color1);
+  padding: 10px;
+}
+
+.mimerenderer-graphviz-dot svg {
+  max-width: 100%;
+  height: auto;
+}

@@ -22,6 +22,8 @@ For a detailed reference of the project's C++ and OCaml APIs, please see our hos
     *   The C++ code uses Emscripten's **`emscripten::val` API** to make direct, type-safe calls to the JavaScript functions exported by the OCaml backend. This is the primary way C++ gives commands to OCaml.
     *   For asynchronous operations (like code execution), the C++ side passes C++ callback functions (bound via `EMSCRIPTEN_BINDINGS`) to the OCaml/JS side. The OCaml code, using its `Lwt` library for concurrency, performs the long-running task and invokes the C++ callback with the result when finished.
 
+4.  **JupyterLab Mime Renderer Extension**: A small TypeScript-based extension, located in the `extension/` directory, enhances the frontend by adding support for custom MIME types, such as rendering Graphviz DOT strings into SVG images.
+
 This in-process model avoids the complexity and latency of Web Workers, enabling near-instantaneous communication for features like code completion.
 
 ### C++ Component Breakdown
@@ -112,6 +114,21 @@ The kernel supports loading third-party libraries through an automated build-tim
 
 -   **Key Files**: `ocaml/src/xlib/xlib.ml`, `ocaml/src/xtoplevel/xtoplevel.ml`.
 
+### 6. Graphviz/DOT Visualization (Frontend Extension)
+
+This feature enables the rendering of Graphviz DOT language strings into SVG images, powered by a custom JupyterLab MIME renderer extension.
+
+-   **Logic Flow**:
+    1.  A user calls the `output_dot` function from the `Xlib` module with a string containing DOT syntax.
+    2.  `ocaml/src/xlib/xlib.ml`: The `output_dot` function creates a `DisplayData` object with the custom MIME type `application/vnd.graphviz.dot` and adds it to the output queue.
+    3.  The C++ kernel publishes this `display_data` message to the frontend.
+    4.  **Frontend Extension**: The JupyterLab frontend finds the custom MIME renderer extension located in the `extension/` directory, which has registered itself to handle this specific MIME type.
+    5.  `extension/src/index.ts`: The TypeScript code for the extension receives the DOT string. It calls the **`@viz-js/viz`** library, which is a WebAssembly port of the Graphviz layout engine.
+    6.  The `viz.js` library parses the DOT string and generates a complete SVG element.
+    7.  The extension then appends this SVG element directly into the cell's output area, displaying the rendered graph.
+
+-   **Key Files**: `ocaml/src/xlib/xlib.ml`, `extension/src/index.ts`, `extension/package.json`.
+
 ## 🛠️ Local Development & Build Process
 
 This project uses **pixi** to manage all dependencies and build tasks, providing a consistent environment for both OCaml and C++/WASM development.
@@ -139,11 +156,14 @@ The build happens in two main phases within the recipe:
     -   Finally, the C++ objects are linked together. Critically, the `xocaml.bc.js` file from Phase 1 is included in this linking step via the `--pre-js` flag. This bundles the OCaml backend directly with the WASM module's JavaScript loader.
     -   The final outputs (`xocaml.wasm`, `xocaml.js`, and all static assets) are packaged into a `.conda` file in the `output/` directory.
 
+
+
 To build and run a local JupyterLite instance for testing:
 
-1.  **Build the Kernel Package**: `pixi run build-kernel`
-2.  **Install the Kernel for JupyterLite**: `pixi run install-kernel`
-3.  **Serve JupyterLite**: `pixi run serve-jupyterlite`
+1.  **Build the Frontend Extension**: `pixi run -e extension build-extension`
+2.  **Build the Kernel Package**: `pixi run build-kernel`
+3.  **Install the Kernel for JupyterLite**: `pixi run install-kernel`
+4.  **Serve JupyterLite**: `pixi run serve-jupyterlite`
 
 You can now access the local JupyterLite instance in your browser, typically at `http://localhost:8000`.
 

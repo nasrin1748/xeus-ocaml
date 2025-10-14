@@ -165,3 +165,12 @@ let output_gif_base64 s =
  *)
 let output_pdf_base64 s =
   create_and_add_display_data "application/pdf" (`String s)
+
+
+(**
+    Outputs a Graphviz dot string with the custom MIME type for rendering
+    by a frontend extension.
+    @param s A string containing a valid Graphviz dot specification.
+ *)
+let output_dot s =
+  create_and_add_display_data "application/vnd.graphviz.dot" (`String s)

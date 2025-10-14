@@ -5,7 +5,7 @@
   (universe))
  (action
   (progn
-   (bash "for f in $(ocamlfind query stdlib)/*.cmi; do [ -f \"$f\" ] && [[ $(basename \"$f\") = stdlib* ]] && [[ $(basename \"$f\") != \"stdlib.cmi\" ]] && cp \"$f\" . || true; done")
+   (bash "for f in $(ocamlfind query stdlib)/*.cmi; do [ -f \"$f\" ] && [[ $(basename \"$f\") != \"stdlib.cmi\" ]] && cp \"$f\" . || true; done")
    (bash "for f in $(ocamlfind query stdlib)/*.cmt; do [ -f \"$f\" ] && [[ $(basename \"$f\") = stdlib* ]] && cp \"$f\" . || true; done")
    (bash "for f in $(ocamlfind query stdlib)/*.cmti; do [ -f \"$f\" ] && [[ $(basename \"$f\") = stdlib* ]] && cp \"$f\" . || true; done")
    (bash "touch stdlib_files.stamp"))))

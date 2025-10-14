@@ -34,19 +34,6 @@ open Merlin_utils.Std
 let merlin_vfs_path = "/static/cmis"
 
 (**
-    A helper to generate the base filename for a standard library module.
-    It handles the special cases for "Stdlib" and the kernel's own "Xlib",
-    and follows the `dune` naming convention for submodules (e.g., `Stdlib.Mutex`
-    becomes `stdlib__Mutex`).
-    @param mod_name The capitalized module name (e.g., "Mutex").
-    @return The base filename (e.g., "stdlib__Mutex").
- *)
-let filename_of_module_base mod_name =
-  if mod_name = "Stdlib" then "stdlib"
-  else if mod_name = "Xlib" then "xlib"
-  else "stdlib__" ^ mod_name
-
-(**
     Performs the initial file setup for the kernel environment.
    
     This function orchestrates the loading of all files necessary for the OCaml
@@ -75,30 +62,27 @@ let setup ~base_url:url =
       log (Printf.sprintf "[Loader] Skipping static file, already exists: %s" path)
     ));
 
-  (* --- Initial Dynamic Loading --- *)
-  log (Printf.sprintf "[Loader] Asynchronously fetching %d dynamic stdlib modules from base URL: %s" (List.length Dynamic_modules.modules) url);
-  let fetch_module mod_name =
-    let filename_base = filename_of_module_base mod_name in
-    let fetch_one ext =
-      let filename = Printf.sprintf "%s.%s" filename_base ext in
-      let vfs_path = Filename.concat merlin_vfs_path filename in
-      if Sys.file_exists vfs_path then begin
-        log (Printf.sprintf "[Loader] Skipping async download, file already exists: %s" vfs_path);
-        Lwt.return_unit
-      end else begin
-        let fetch_url = Filename.concat url filename in
-        log (Printf.sprintf "[Loader] Fetching dynamic file: %s" fetch_url);
-        let* content_opt = Xnetwork.async_get fetch_url in
-        Option.iter content_opt ~f:(fun content ->
-          log (Printf.sprintf "[Loader] SUCCESS: Fetched and writing to VFS: %s" vfs_path);
-          Js_of_ocaml.Sys_js.create_file ~name:vfs_path ~content);
-        Lwt.return_unit
-      end
-    in
-    Lwt.join (List.map ~f:fetch_one ["cmi"; "cmt"; "cmti"])
+  (* --- Initial Dynamic Loading (Simplified) --- *)
+  log (Printf.sprintf "[Loader] Asynchronously fetching %d dynamic artifact files from base URL: %s" (List.length Dynamic_files.files) url);
+  
+  let fetch_one_file filename =
+    let vfs_path = Filename.concat merlin_vfs_path filename in
+    if Sys.file_exists vfs_path then begin
+      log (Printf.sprintf "[Loader] Skipping async download, file already exists: %s" vfs_path);
+      Lwt.return_unit
+    end else begin
+      let fetch_url = Filename.concat url filename in
+      log (Printf.sprintf "[Loader] Fetching dynamic file: %s" fetch_url);
+      let* content_opt = Xnetwork.async_get fetch_url in
+      Option.iter content_opt ~f:(fun content ->
+        log (Printf.sprintf "[Loader] SUCCESS: Fetched and writing to VFS: %s" vfs_path);
+        Js_of_ocaml.Sys_js.create_file ~name:vfs_path ~content);
+      Lwt.return_unit
+    end
   in
-  let* () = Lwt.join (List.map ~f:fetch_module Dynamic_modules.modules) in
-  log "[Loader] All initial dynamic modules processed. Setup complete.";
+
+  let* () = Lwt.join (List.map ~f:fetch_one_file Dynamic_files.files) in
+  log "[Loader] All initial dynamic files processed. Setup complete.";
   Lwt.return_unit
 
 (**
@@ -138,7 +122,7 @@ let load_on_demand ~base_url ~name : (Protocol.output, Protocol.output) result L
           | None -> Lwt.fail_with ("Failed to fetch JS bundle: " ^ js_url)
         in
         (* Concurrently, fetch all associated Merlin artifacts. *)
-        let artifact_promises = List.map (fun artifact_file ->
+        let artifact_promises = List.map ~f:(fun artifact_file ->
             let artifact_url = Filename.concat base_url artifact_file in
             let* content_opt = Xnetwork.async_get artifact_url in
             match content_opt with

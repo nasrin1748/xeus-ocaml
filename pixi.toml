@@ -85,6 +85,36 @@ jest = "*"
 # Installs npm packages and runs the test suite.
 test = { cmd = "npm install && jest --runInBand", cwd = "ocaml/tests" }
 
+#==============================================================================
+# [feature.extension]: JupyterLab Extension
+# Defines the environment and tasks for developing the JupyterLab extension.
+# This is intended for a native linux-64 development environment.
+#==============================================================================
+[feature.extension]
+platforms = ["linux-64"]
+
+[feature.extension.dependencies]
+# Node.js is required for JupyterLab extension development.
+nodejs = "20.*"
+# Templating tool used for project scaffolding.
+copier = "9.*"
+# Jinja2 extension for time-related functions.
+jinja2-time = "*"
+# Python package installer.
+pip = "*"
+# The JupyterLab frontend.
+jupyterlab = "*"
+
+[feature.extension.tasks]
+# Installs Node.js dependencies for the JupyterLab extension.
+# It cleans the environment before installing to ensure a fresh state.
+setup-extension = { cmd = "truncate -s 0 yarn.lock && rm -rf node_modules && jlpm install", cwd = "extension" }
+
+# Builds the production version of the JupyterLab extension.
+# This task depends on 'setup-extension' to ensure dependencies are installed first.
+build-extension = { cmd = "jlpm build:prod", cwd = "extension", depends-on = ["setup-extension"] }
+
+
 
 #==============================================================================
 # [feature.kernel]: WASM Kernel Runtime Environment
@@ -148,7 +178,7 @@ pixi run -e kernel micromamba install -y --offline --no-channel-priority $PIXI_P
 # Builds the static JupyterLite website.
 # It cleans previous build artifacts and points to the WASM kernel
 # located in the isolated '.pixi/envs/kernel' directory.
-build-jupyterlite = { cmd = "rm -fr _output && rm -f .jupyterlite.doit.db && jupyter lite build --XeusAddon.prefix=.pixi/envs/kernel" }
+build-jupyterlite = { cmd = "rm -fr _output && rm -f .jupyterlite.doit.db && jupyter lite build --XeusAddon.prefix=.pixi/envs/kernel --contents notebooks" }
 
 # Serves the JupyterLite site locally for development and testing.
 # This provides a quick way to test the WASM kernel in a live browser environment.
@@ -160,6 +190,7 @@ build-all = {depends-on = ["build-kernel","install-kernel", "build-jupyterlite"]
 build-serve = {depends-on = ["build-all", "serve-jupyterlite"]}
 
 pre-release = """
+rm -rf output && \
 pixi run sync-version && \
 pixi run build-kernel && \
 pixi run test &&\
@@ -249,6 +280,9 @@ docs = { features = ["docs"] }
 
 dev-tools = { features = ["dev-tools"] }
 
+# The 'extension' environment provides the necessary tools (like Node.js)
+# for developing the JupyterLab frontend extension.
+extension = { features = ["extension"] }
 
 ###############################################################################
 ### [activation]: Activation Scripts and Variables

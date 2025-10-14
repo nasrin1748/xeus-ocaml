@@ -97,3 +97,11 @@ val output_vegalite : string -> unit
   @param s A string containing a valid Vega JSON specification.
  *)
 val output_vega : string -> unit
+
+
+(**
+    Outputs a Graphviz dot string with the custom MIME type for rendering
+    by a frontend extension.
+    @param s A string containing a valid Graphviz dot specification.
+ *)
+val output_dot : string -> unit

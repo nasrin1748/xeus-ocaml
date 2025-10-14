@@ -9,7 +9,7 @@
   xocaml.protocol
   xocaml.external_libs
   xocaml.libloader.static_files
-  xocaml.libloader.dynamic_modules
+  xocaml.libloader.dynamic_files
   merlin-lib.utils
   js_of_ocaml
   js_of_ocaml-toplevel
