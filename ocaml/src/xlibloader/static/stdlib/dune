@@ -1,0 +1,4 @@
+(rule
+ (target stdlib.cmi)
+ (action
+  (bash "cp $(ocamlfind query stdlib)/stdlib.cmi %{target}")))

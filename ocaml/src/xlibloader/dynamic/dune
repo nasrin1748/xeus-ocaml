@@ -2,14 +2,12 @@
  (target dynamic_modules.ml)
  (deps
   gen_dynamic.ml
-  (alias ./stdlib/merlin_files)
+  (alias ./stdlib/xlib_files)
   (glob_files stdlib/*.cmi))
  (action
   (run ocaml %{dep:gen_dynamic.ml})))
 
 (library
  (name dynamic_modules)
- (public_name xocaml.xmerlin.dynamic_modules)
+ (public_name xocaml.libloader.dynamic_modules)
  (modules dynamic_modules))
-
-

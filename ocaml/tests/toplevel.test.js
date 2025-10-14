@@ -10,7 +10,7 @@ describe('Eval Command (Async)', () => {
   // beforeAll is now async and sends the setup payload
   beforeAll(async () => {
     console.log('--- beforeAll: Running async Setup command ---');
-    const setupPayload = { dsc_url: "../output/bld/rattler-build_xeus-ocaml/work/ocaml-build/xmerlin/dynamic/stdlib" };
+    const setupPayload = { dsc_url: "../output/bld/rattler-build_xeus-ocaml/work/ocaml-build/xlibloader/dynamic/stdlib" };
     const response = await callToplevelAsync('Setup', setupPayload);
 
     expect(response.class).toBe('return');

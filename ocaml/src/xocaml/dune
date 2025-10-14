@@ -6,6 +6,8 @@
   xmerlin
   xtoplevel
   xlib
+  xocaml.libloader
+  xocaml.xnetwork
   merlin-lib.utils
   protocol
   yojson
@@ -18,4 +20,6 @@
 
  (js_of_ocaml
  (flags 
- --toplevel )))
+ --toplevel 
+  --no-cmis
+ )))

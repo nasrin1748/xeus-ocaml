@@ -1,18 +1,61 @@
+(**
+    @author Davy Cottet
+    Provides a bridge between the OCaml standard library's file operations and
+    the Emscripten Filesystem (FS) API. This allows standard OCaml code using
+    modules like `Sys`, `In_channel`, and `Out_channel` to operate on an
+    in-memory filesystem within the browser.
+   
+    The module registers a custom `js_of_ocaml` VFS (Virtual File System)
+    device that translates these OCaml calls into their corresponding
+    JavaScript calls on the Emscripten `FS` object. All filesystem operations
+    are rooted at the `/drive/` mount point.
+ *)
 
 open Js_of_ocaml
 open Xutil
 
 let () = log "[XFS] Module loaded."
 
+(**
+    A mutable reference to cache the Emscripten FS object once it's retrieved
+    from the global JavaScript scope. This avoids repeated lookups.
+ *)
 let fs_ref : Js.Unsafe.any Js.Opt.t ref = ref Js.null
 
+(**
+    A helper to safely retrieve the cached FS object.
+    @raise Failure if the FS has not been initialized by calling {!mount_drive}.
+ *)
 let get_fs () =
   Js.Opt.case !fs_ref
     (fun () -> failwith "Xfs.mount_drive() was not called successfully.")
     (fun fs -> fs)
 
+(**
+    Initializes the connection to the Emscripten FS and mounts it as a device
+    at `/drive/` within the `js_of_ocaml` VFS.
+   
+    This is the primary setup function for all filesystem functionality in the
+    kernel and must be called once at startup before any file I/O is attempted.
+   
+    Internally, this function performs the following steps:
+    1. Lazily finds and caches the global `Module.FS` object provided by the
+       Emscripten runtime.
+    2. Constructs a JavaScript "device" object that maps OCaml VFS operations
+       (e.g., `exists`, `readdir`, `open`) to the corresponding Emscripten `FS`
+       methods.
+    3. Pushes this device object onto the `jsoo_runtime.jsoo_mount_point`
+       array, making it active.
+    4. Attempts to change the current working directory of the OCaml process to
+       `/drive/`.
+   
+    The function includes error handling and will log critical failures to the
+    console if the Emscripten `FS` object cannot be found or the device fails
+    to mount.
+ *)
 let mount_drive () =
   try
+    (* Step 1: Find and cache the Emscripten FS object if not already done. *)
     if not (Js.Opt.test !fs_ref) then (
       try
         let module_obj = Js.Unsafe.get Js.Unsafe.global (Js.string "Module") in
@@ -24,6 +67,7 @@ let mount_drive () =
         raise exn (* Re-raise the exception to halt setup *)
     );
 
+    (* Step 2: Construct the OCaml implementation of the VFS device. *)
     log "[XFS] mount_drive: Building and mounting Emscripten device...";
     let root_path = "/drive/" in
     let resolve_impl path = root_path ^ (Js.to_string path) in
@@ -84,6 +128,8 @@ let mount_drive () =
       ("rename", Js.Unsafe.inject (Js.wrap_callback rename_impl));
       ("open", Js.Unsafe.inject (Js.wrap_callback open_impl));
     |] in
+
+    (* Step 3: Mount the device into the js_of_ocaml runtime. *)
     let jsoo_runtime = Js.Unsafe.get Js.Unsafe.global (Js.string "jsoo_runtime") in
     let jsoo_mount_point = Js.Unsafe.get jsoo_runtime (Js.string "jsoo_mount_point") in
     ignore (Js.Unsafe.meth_call jsoo_mount_point "push" [|
@@ -93,6 +139,8 @@ let mount_drive () =
       |])
     |]);
     log "[XFS] SUCCESS: Mounted Emscripten FS device from OCaml at /drive/";
+
+    (* Step 4: Change the current working directory to the new mount point. *)
     (try
       Sys.chdir "/drive/";
       log (Printf.sprintf "[Toplevel] Changed current working directory to: %s" (Sys.getcwd ()))

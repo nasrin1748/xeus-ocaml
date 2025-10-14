@@ -154,10 +154,9 @@ We welcome contributions! If you're interested in the project's architecture, se
 -   [x] Code inspection for tooltips (Shift+Tab) and the inspector panel.
 -   [x] **Virtual Filesystem**: Read and write to the Emscripten virtual filesystem from OCaml using standard library functions (`open_in`, `Sys.readdir`, etc.).
 -   [x] **Rich Outputs**: Display HTML, Markdown, SVG, JSON, and Vega-Lite plots directly from OCaml code using the auto-opened `Xlib` module.
--   [x] **Library Management**: Dynamically fetch and load pre-compiled OCaml libraries from within a notebook session via the `#require "my_lib";;` directive.
+-   [x] **Library Management**: Dynamically fetch and load pre-compiled OCaml libraries from within a notebook session via the `#require "my_lib";;` directive. Try it with `ocamlgraph`
 
 ### Future Work
--   [ ] **Dynamic library bundle and load** : Improve and simplify the process of adding new external library to bundle, and load their cmt/cmti for completion and documentation.
 -   [ ] **User Input**: Add support for Jupyter's `input_request` messages to allow interactive OCaml functions like `read_line()` that wait for user input from the console.
 -   [ ] **Custom Widgets**: Develop a communication bridge (`Comm`) to enable OCaml code to interact with Jupyter Widgets for creating rich, interactive outputs.
 

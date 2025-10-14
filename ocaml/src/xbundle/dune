@@ -1,15 +1,19 @@
 (executable
  (public_name xbundle)
  (name xbundle)
- (libraries bos cmdliner)
+  (modules xbundle)
+ (libraries bos cmdliner yojson)
  (package xocaml))
-
+ 
 (rule
- (target ocamlgraph.js) ; so cmake can list it for xeus shared
- (deps xbundle.exe)
+ (alias bundle)
+ (targets  external_libs.ml)
+ (deps xbundle.exe libs.txt)
  (action
-   (run  %{exe:xbundle.exe} --output %{target} ocamlgraph )))
+  (progn
+   (run %{exe:xbundle.exe} %{dep:libs.txt}))))
 
-(alias
- (name bundle)
- (deps ocamlgraph.js))
+(library
+ (name external_libs)
+ (public_name xocaml.external_libs)
+ (modules external_libs))

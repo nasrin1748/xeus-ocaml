@@ -38,13 +38,17 @@ endif ()
 # --- START: Logic to build shared metadata JSON ---
 
 # 1. Define directories for dynamic assets
-set(MERLIN_STDLIB_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ocaml-build/xmerlin/dynamic/stdlib")
-set(JS_BUNDLE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ocaml-build/xbundle") # NEW
+set(MERLIN_STDLIB_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ocaml-build/xlibloader/dynamic/stdlib")
+set(JS_BUNDLE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ocaml-build/xbundle") 
 
 # 2. Find all relevant files
 file(GLOB STDLIB_FILES CONFIGURE_DEPENDS "${MERLIN_STDLIB_DIR}/*")
-file(GLOB JS_BUNDLE_FILES CONFIGURE_DEPENDS "${JS_BUNDLE_DIR}/*.js") # NEW
-
+file(GLOB JS_BUNDLE_FILES CONFIGURE_DEPENDS
+    "${JS_BUNDLE_DIR}/*.js"
+    "${JS_BUNDLE_DIR}/*.cmi"
+    "${JS_BUNDLE_DIR}/*.cmt"
+    "${JS_BUNDLE_DIR}/*.cmti"
+)
 # 3. Loop through the files and build a list of JSON key-value pairs
 set(JSON_PAIRS "")
 foreach(filepath ${STDLIB_FILES})
@@ -411,7 +415,12 @@ if(EMSCRIPTEN)
     if(EXISTS ${JS_BUNDLE_DIR})
         install(DIRECTORY "${JS_BUNDLE_DIR}/"
                 DESTINATION ${CMAKE_INSTALL_LIBDIR}/jslibs
-                FILES_MATCHING PATTERN "*.js")
+                FILES_MATCHING 
+                PATTERN "*.js"
+                PATTERN "*.cmt"
+                PATTERN "*.cmti"
+                PATTERN "*.cmi"
+                )
     endif()
 
     install(FILES

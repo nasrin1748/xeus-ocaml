@@ -1,20 +1,29 @@
 (**
- * @file network.ml
- * @brief Implementation of asynchronous network operations using Lwt and XHR.
+    @author Davy Cottet
+   
+    This module provides a minimal, promise-based interface for performing
+    asynchronous network requests within the browser. It abstracts the
+    callback-based nature of `XmlHttpRequest` into a more convenient Lwt-based
+    API for use throughout the OCaml kernel.
  *)
 
 open Xutil
 
 (**
- * Asynchronously fetches the content of a given URL.
- *
- * This function uses the XmlHttpRequest API to perform a GET request. It bridges
- * the callback-based nature of XHR with Lwt's promise-based concurrency model
- * by using [Lwt.task].
- *
- * @param url The URL to fetch.
- * @return A promise that resolves to [Some string] on success, or [None] if the
- *         fetch fails for any reason (e.g., network error, 404 status).
+    Asynchronously fetches the content of a given URL.
+   
+    This function uses the `Js_of_ocaml` bindings for the `XmlHttpRequest` API
+    to perform an asynchronous GET request. It bridges the callback-based
+    browser API with OCaml's Lwt library by creating a promise with `Lwt.task`.
+    The promise is resolved in the `onload` or `onerror` callbacks of the request.
+   
+    The request is configured to receive an `arraybuffer` to ensure that both
+    text and binary files are handled correctly without corruption, before being
+    converted to an OCaml string.
+   
+    @param url The URL to fetch.
+    @return A promise that resolves to [`Some string`] on success, or [`None`] if the
+            fetch fails for any reason (e.g., network error, 404 status).
  *)
 let async_get (url : string) : string option Lwt.t =
   let open Js_of_ocaml in

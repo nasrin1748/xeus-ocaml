@@ -1,0 +1,17 @@
+# Doxyfile Configuration for xeus-ocaml C++ Code
+
+PROJECT_NAME           = "xeus-ocaml C++ API"
+PROJECT_BRIEF          = "C++ components of the xeus-ocaml Jupyter kernel"
+OUTPUT_DIRECTORY       = docs/build/doxygen
+INPUT                  = include src
+RECURSIVE              = YES
+EXTRACT_ALL            = YES
+EXTRACT_PRIVATE        = NO
+EXTRACT_STATIC         = YES
+OPTIMIZE_OUTPUT_FOR_C  = NO
+GENERATE_LATEX         = NO
+GENERATE_HTML          = NO
+GENERATE_XML           = YES
+XML_OUTPUT             = xml
+QUIET                  = YES
+WARN_IF_UNDOCUMENTED   = NO

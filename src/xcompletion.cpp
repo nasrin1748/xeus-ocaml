@@ -51,12 +51,6 @@ namespace xeus_ocaml
         return "text";
     }
 
-    /**
-     * @brief Handles a code completion request.
-     * @param code The code in the cell.
-     * @param cursor_pos The cursor's position.
-     * @return A JSON object for the `complete_reply` message.
-     */
     nl::json handle_completion_request(const std::string& code, int cursor_pos)
     {
         // 1. Prepare the request for the Merlin backend.

@@ -1,83 +1,80 @@
+(**
+  @author Davy Cottet
+ 
+  This module serves as the primary bridge between the `xeus-ocaml` kernel's
+  protocol and the Merlin code analysis library. It is responsible for handling
+  all synchronous code intelligence requests, such as code completion, type
+  inspection, and error checking.
+ 
+  It operates on a virtual filesystem (VFS) that must be populated with the
+  necessary Merlin artifacts (`.cmi`, `.cmt`, `.cmti`) by the {!Xlibloader}
+  module before this module is initialized. It uses Merlin "pipelines" to process
+  queries against a given source code buffer.
+ *)
+
 open Merlin_utils
 open Std
 open Merlin_kernel
 open Merlin_commands
 open Lwt.Syntax
+open Xutil
 module Location = Ocaml_parsing.Location
 
-let stdlib_path = "/static/cmis2"
+(** The designated path within the VFS where all Merlin artifacts are stored. *)
+let stdlib_path = "/static/cmis"
 
+(**
+ * The main Merlin configuration object.
+ * It is configured to look for the standard library in the {!stdlib_path}
+ * within the virtual filesystem.
+ *)
 let config =
   let initial = Mconfig.initial in
   { initial with
     merlin = { initial.merlin with
       stdlib = Some stdlib_path }}
 
-let async_get url : string option Lwt.t =
-  let open Js_of_ocaml in
-  try%lwt
-    let promise, resolver = Lwt.task () in
-    let req = XmlHttpRequest.create () in
-    req##.responseType := Js.string "arraybuffer";
-    req##_open (Js.string "GET") (Js.string url) Js._true;
-    req##.onload := Dom.handler (fun _ ->
-      if req##.status = 200 then (
-        Js.Opt.case (File.CoerceTo.arrayBuffer req##.response)
-          (fun () ->
-            Lwt.wakeup_later resolver None)
-          (fun response_buf ->
-            let str = Typed_array.String.of_arrayBuffer response_buf in
-            Lwt.wakeup_later resolver (Some str))
-      ) else (
-        Lwt.wakeup_later resolver None
-      );
-      Js._true);
-    req##.onerror := Dom.handler (fun _ ->
-        Lwt.wakeup_later resolver None;
-        Js._true);
-    req##send Js.null;
-    promise
-  with exn ->
-    Console.console##log (Js.string ("Exception in async_get: " ^ Printexc.to_string exn));
-    Lwt.return_none
+(**
+  Initializes the Merlin configuration.
+ 
+  This function should be called exactly once during kernel startup, immediately
+  after the {!Xlibloader.setup} function has successfully completed. It finalizes
+  the configuration Merlin will use to find standard library modules in the
+  virtual filesystem.
+ *)
+let initialize () =
+  log "[Xmerlin] Merlin configuration initialized.";
+  (* The main work of loading files is now done by the library loader.
+     This function is a placeholder in case any Merlin-specific, non-VFS
+     setup is needed in the future. The config is already defined. *)
+  ()
 
-let filename_of_module_base mod_name =
-  if mod_name = "Stdlib" then "stdlib"
-  else if mod_name = "Xlib" then "xlib"
-  else "stdlib__" ^ mod_name
-
-
-let setup ~url =
-  List.iter Static_files.files ~f:(fun (name, content) ->
-    let path = Filename.concat stdlib_path name in
-    Js_of_ocaml.Sys_js.create_file ~name:path ~content);
-  
-  let fetch_module mod_name =
-    let filename_base = filename_of_module_base mod_name in
-    let fetch_one ext =
-      let filename = Printf.sprintf "%s.%s" filename_base ext in
-      let fetch_url = Filename.concat url filename in
-      let* content_opt = async_get fetch_url in
-      Option.iter content_opt ~f:(fun content ->
-        let name = Filename.(concat stdlib_path filename) in
-        Js_of_ocaml.Sys_js.create_file ~name ~content);
-        (* reset_dirs (); *)
-      Lwt.return_unit
-    in
-    Lwt.join (List.map ~f:fetch_one ["cmi"; "cmt"; "cmti"])
-  in
-  let* () = Lwt.join (List.map ~f:fetch_module Dynamic_modules.modules) in
-  Lwt.return_unit
-
+(**
+  Creates a Merlin processing pipeline for a given source code buffer.
+  @param source The {!Msource.t} containing the code to be analyzed.
+  @return A new {!Mpipeline.t} instance.
+ *)
 let make_pipeline source =
   Mpipeline.make config source
 
+(**
+  A helper function to create a pipeline, run a single query against it,
+  and return the result.
+  @param source The source code buffer.
+  @param query The Merlin query to execute.
+  @return The result of the query.
+ *)
 let dispatch source query  =
   let pipeline = make_pipeline source in
   Mpipeline.with_pipeline pipeline @@ fun () -> (
     Query_commands.dispatch pipeline query
   )
 
+(**
+  Internal helper module for code completion logic.
+  This code is adapted from Merlin's frontend tools to correctly identify
+  the identifier prefix at the cursor's position.
+ *)
 module Completion = struct
   let rfindi =
     let rec loop s ~f i =
@@ -100,12 +97,14 @@ module Completion = struct
             i
       in
       loop s ~f from
+
   let lsplit2 s ~on =
     match String.index_opt s on with
     | None -> None
     | Some i ->
       let open String in
       Some (sub s ~pos:0 ~len:i, sub s ~pos:(i + 1) ~len:(length s - i - 1))
+
   let prefix_of_position ?(short_path = false) source position =
     match Msource.text source with
     | "" -> ""
@@ -156,8 +155,23 @@ module Completion = struct
       else
         reconstructed_prefix
 end
+
+(**
+  Processes a synchronous, Merlin-related action from the kernel protocol.
+ 
+  This is the main entry point for handling code intelligence requests. It takes
+  a protocol action, determines if it's a command intended for Merlin, and if so,
+  executes the corresponding Merlin query (e.g., `Complete_prefix`, `Type_enclosing`).
+ 
+  @param action The {!Protocol.action} to be processed.
+  @return It returns [`Some json_result`] if the action was a Merlin command and was
+          processed successfully. It returns [`None`] if the action is not a Merlin
+          command (e.g., `Eval`), indicating that another part of the system
+          should handle it.
+ *)
 let process_merlin_action (action : Protocol.action) : Yojson.Basic.t option =
   match action with
+  (** Handle a code completion request. *)
   | Protocol.Complete_prefix { source; position } ->
     let source = Msource.make source in
     let position = Protocol.to_msource_position position in
@@ -179,27 +193,37 @@ let process_merlin_action (action : Protocol.action) : Yojson.Basic.t option =
         end
     in
     Some result
+
+  (** Handle a type inspection request. *)
   | Type_enclosing { source; position } ->
     let source = Msource.make source in
     let position = Protocol.to_msource_position position in
     let query = Query_protocol.Type_enclosing (None, position, None) in
     let response = dispatch source query in
     Some (Query_json.json_of_response query response)
+
+  (** Handle a request to get all syntax/type errors in the buffer. *)
   | All_errors { source } ->
     let source = Msource.make source in
     let query = Query_protocol.Errors { lexing = true; parsing = true; typing = true } in
     let errors = dispatch source query in
     Some (Query_json.json_of_response query errors)
+
+  (** Handle a documentation look-up request. *)
   | Document { source; position } ->
     let source = Msource.make source in
     let position = Protocol.to_msource_position position in
     let query = Query_protocol.Document (None, position) in
     let response = dispatch source query in
     Some (Query_json.json_of_response query response)
+
+  (** Handle a request to list files in the VFS (for debugging). *)
   | List_files  { path } ->
     let files =
       try Sys.readdir path |> Array.to_list
       with _ -> []
     in
     Some (`List (List.map ~f:(fun s -> `String s) files))
+
+  (** If the action is not for Merlin (e.g., Eval), return None. *)
   | _ -> None

@@ -4,6 +4,12 @@ First off, thank you for considering contributing to `xeus-ocaml`! This project 
 
 This document provides a detailed guide for developers who want to understand the project's internals and contribute to its development. If you have questions, please feel free to open an issue on our [GitHub issue tracker](https://github.com/davy39/xeus-ocaml/issues).
 
+## 📖 API Documentation
+
+For a detailed reference of the project's C++ and OCaml APIs, please see our hosted documentation, which is automatically generated from the source code comments.
+
+[**View the full API Documentation**](https://davy39.github.io/xeus-ocaml/docs/)
+
 ## 🏗️ High-Level Architecture
 
 `xeus-ocaml` is a hybrid C++/OCaml kernel designed to run entirely in the browser using WebAssembly (WASM). This architecture provides a fast, serverless Jupyter experience by executing all components—the Jupyter protocol handler and the OCaml language engine—within the same browser execution context.
@@ -47,22 +53,22 @@ This is the kernel's core feature: running OCaml code.
 
 ### 2. Merlin Integration (Completion & Inspection)
 
-This feature provides IDE-like assistance.
+This feature provides IDE-like assistance. To function, Merlin needs access to compiled interface (`.cmi`), implementation (`.cmt`), and interface-implementation (`.cmti`) files. We use a sophisticated hybrid approach to load these files:
 
 -   **Logic Flow**:
     1.  A user presses `Tab` (completion) or `Shift+Tab` (inspection).
-    2.  `xinterpreter.cpp`: The `complete_request_impl` or `inspect_request_impl` method is called. It delegates to the logic in `xcompletion.cpp` or `xinspection.cpp`.
-    3.  `xcompletion.cpp` / `xinspection.cpp`: The handler function builds a JSON request that matches the OCaml `Protocol.t` definition.
+    2.  `xinterpreter.cpp`: The `complete_request_impl` or `inspect_request_impl` method is called, delegating to `xcompletion.cpp` or `xinspection.cpp`.
+    3.  `xcompletion.cpp` / `xinspection.cpp`: The handler builds a JSON request that matches the OCaml `Protocol.t` definition.
     4.  `xocaml_engine.cpp`: It calls `call_merlin_sync`. This is a **synchronous** call that blocks until the JavaScript function returns.
-    5.  `ocaml/src/xocaml/xocaml.ml`: The `processMerlinAction` function receives the request. It calls `Xmerlin.process_merlin_action`.
-    6.  `ocaml/src/xmerlin/xmerlin.ml`: This module uses the `merlin-lib` library to process the request (e.g., `Query_protocol.Complete_prefix`) against the current source code buffer.
-    7.  The result is converted to JSON and returned synchronously all the way back to C++, where it's formatted into a Jupyter reply and sent to the frontend.
+    5.  `ocaml/src/xocaml/xocaml.ml`: The `processMerlinAction` function receives the request and calls `Xmerlin.process_merlin_action`.
+    6.  `ocaml/src/xmerlin/xmerlin.ml`: This module uses the `merlin-lib` library to process the request against the current source code buffer.
+    7.  The result is converted to JSON and returned synchronously all the way back to C++, where it's formatted into a Jupyter reply.
 
--   **Subtleties**: To provide completions for the standard library, Merlin needs access to its compiled interface (`.cmi`) files. We use a hybrid approach:
-    -   **Static (`ocaml/src/xmerlin/static`)**: A core set of stdlib modules are embedded directly into the `xocaml.js` bundle at compile time using `ppx_blob`. This ensures basic functionality is always available offline.
-    -   **Dynamic (`ocaml/src/xmerlin/dynamic`)**: Other modules are fetched from the server when the kernel first initializes to keep the initial bundle size reasonable.
+-   **Standard Library Loading Strategy**:
+    -   **Static (Core Requirement)**: The single most important file, `stdlib.cmi`, is embedded directly into the main `xocaml.js` bundle at compile time using `ppx_blob`. This is critical because the OCaml toplevel requires it to initialize its environment (`Compmisc.initial_env()`). Loading it statically guarantees the kernel can always start correctly.
+    -   **Dynamic (On Startup)**: The rest of the standard library's artifacts (all other `.cmi`, `.cmt`, and `.cmti` files) are fetched asynchronously from the server when the kernel first starts. This keeps the initial bundle size small while ensuring full standard library support for completion and documentation is available shortly after launch.
 
--   **Key Files**: `src/xcompletion.cpp`, `src/xinspection.cpp`, `ocaml/src/xmerlin/xmerlin.ml`, `ocaml/src/xmerlin/static/`, `ocaml/src/xmerlin/dynamic/`.
+-   **Key Files**: `src/xcompletion.cpp`, `src/xinspection.cpp`, `ocaml/src/xmerlin/xmerlin.ml`, `ocaml/src/xlibloader/xlibloader.ml`, `ocaml/src/xlibloader/static/`, `ocaml/src/xlibloader/dynamic/`.
 
 ### 3. Virtual Filesystem
 
@@ -76,15 +82,25 @@ This feature provides IDE-like assistance.
 
 ### 4. Dynamic Library Loading (`#require`)
 
--   **Logic Flow**:
-    1.  `ocaml/src/xtoplevel/xtoplevel.ml`: The `eval` function's parser specifically looks for the `Ptop_dir` AST node corresponding to `#require "lib_name"`.
-    2.  If found, it calls `Library_loader.load`.
-    3.  `ocaml/src/xtoplevel/library_loader.ml`: This module fetches the corresponding `lib_name.js` file from a pre-configured URL.
-    4.  The fetched JavaScript text is executed directly using `Js.Unsafe.eval_string`.
-    5.  This JS bundle, created by our `xbundle` tool, contains the compiled OCaml library code and its `.cmi` files. When executed, it registers its modules with the `jsoo_runtime` and writes its `.cmi` files to the virtual filesystem.
-    6.  Finally, `Library_loader` calls `Topdirs.dir_directory` to tell the toplevel to rescan its paths, making it aware of the new modules.
+The kernel supports loading third-party libraries through an automated build-time and run-time process.
 
--   **Key Files**: `ocaml/src/xtoplevel/xtoplevel.ml`, `ocaml/src/xtoplevel/library_loader.ml`, `ocaml/src/xbundle/xbundle.ml` (the CLI tool for creating the bundles).
+-   **Build-Time (`xbundle` tool)**:
+    1.  A developer adds a library name (e.g., `ocamlgraph`) to `ocaml/src/xbundle/libs.txt`.
+    2.  During the `dune build` process, our custom `xbundle` tool is executed.
+    3.  For each library in `libs.txt`, `xbundle` uses `ocamlfind` to resolve its entire dependency tree.
+    4.  It then compiles all required OCaml modules into a single JavaScript bundle (`ocamlgraph.js`).
+    5.  Crucially, it also finds and collects all associated Merlin artifacts (`.cmi`, `.cmt`, `.cmti`) for the entire dependency tree.
+    6.  Finally, it generates a metadata module (`external_libs.ml`) that maps the library name to its JS bundle and list of artifact files.
+
+-   **Run-Time (in the Notebook)**:
+    1.  A user executes a cell with `#require "ocamlgraph";;`.
+    2.  `ocaml/src/xtoplevel/xtoplevel.ml`: The `eval` function's parser detects the `#require` directive and calls `Xlibloader.load_on_demand`.
+    3.  `ocaml/src/xlibloader/xlibloader.ml`: This function looks up "ocamlgraph" in the `External_libs` metadata generated at build time.
+    4.  It asynchronously fetches `ocamlgraph.js` and executes it using `Js.Unsafe.eval_string`. This loads the library's code into the `js_of_ocaml` runtime.
+    5.  It then asynchronously fetches all the artifact files associated with `ocamlgraph` and writes them to the virtual filesystem (e.g., `/static/cmis/graph.cmi`, `/static/cmis/dot.cmti`, etc.).
+    6.  Finally, it calls `Topdirs.dir_directory` to tell the toplevel to rescan its paths, making the new modules available for use and visible to Merlin.
+
+-   **Key Files**: `ocaml/src/xtoplevel/xtoplevel.ml`, `ocaml/src/xlibloader/xlibloader.ml`, `ocaml/src/xbundle/xbundle.ml` (the CLI tool), `ocaml/src/xbundle/libs.txt` (the library list).
 
 ### 5. Rich Display (`Xlib`)
 
@@ -114,7 +130,7 @@ The build happens in two main phases within the recipe:
 1.  **Phase 1: Build OCaml to JavaScript**
     -   An `opam` switch is initialized, and all OCaml dependencies from `dune-project` are installed.
     -   `dune build` is executed. This compiles all OCaml source code in `ocaml/src/` into various artifacts, most importantly the final JavaScript bundle: `_build/default/src/xocaml/xocaml.bc.js`.
-    -   This phase also builds the `xbundle` utility and uses it to package libraries like `ocamlgraph`.
+    -   This phase also builds the `xbundle` utility and uses it to read `ocaml/src/xbundle/libs.txt`, automatically packaging the specified third-party libraries (e.g., `ocamlgraph`) and their artifacts into JavaScript bundles.
     -   The build artifacts are cached in a `dune_cache` directory to speed up subsequent builds.
 
 2.  **Phase 2: Build C++ Kernel to WebAssembly**
@@ -125,10 +141,9 @@ The build happens in two main phases within the recipe:
 
 To build and run a local JupyterLite instance for testing:
 
-1.  **Set up the OCaml Environment**: `pixi run -e ocaml setup`
-2.  **Build the Kernel Package**: `pixi run build-kernel`
-3.  **Install the Kernel for JupyterLite**: `pixi run install-kernel`
-4.  **Serve JupyterLite**: `pixi run serve-jupyterlite`
+1.  **Build the Kernel Package**: `pixi run build-kernel`
+2.  **Install the Kernel for JupyterLite**: `pixi run install-kernel`
+3.  **Serve JupyterLite**: `pixi run serve-jupyterlite`
 
 You can now access the local JupyterLite instance in your browser, typically at `http://localhost:8000`.
 

@@ -21,4 +21,10 @@
    
     @param s The string message to log to the console.
  *)
-val log : string -> unit
+#ifndef JS_LOG
+  let log (_str : string) : unit = ()
+#else
+let log (str : string) : unit =
+  Js_of_ocaml.Console.console##log (Js_of_ocaml.Js.string str)
+#endif
+;;

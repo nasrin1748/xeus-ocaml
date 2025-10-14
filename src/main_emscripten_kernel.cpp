@@ -8,16 +8,16 @@
 
 #include <iostream>
 #include <memory>
-
-
 #include <emscripten/bind.h>
 
 #include "xinterpreter.hpp"
 #include "xeus/xembind.hpp"
 
+// Main binding for the kernel itself.
 EMSCRIPTEN_BINDINGS(my_module) {
     xeus::export_core();
     using interpreter_type = xeus_ocaml::interpreter;
     xeus::export_kernel<interpreter_type>("xkernel");
 }
+
 

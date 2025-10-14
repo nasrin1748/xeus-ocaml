@@ -24,11 +24,6 @@ namespace xeus_ocaml
 {
     namespace ocaml_engine
     {
-        /**
-         * @brief Synchronously executes a Merlin command.
-         * @param request The JSON request payload for the Merlin action.
-         * @return A JSON object with the result.
-         */
         nl::json call_merlin_sync(const nl::json& request)
         {
             XOCAML_LOG("Merlin Sync Request", request.dump(2));
@@ -51,11 +46,6 @@ namespace xeus_ocaml
             }
         }
 
-        /**
-         * @brief Asynchronously executes a Toplevel command.
-         * @param request The JSON request payload for the Toplevel action.
-         * @param callback The JavaScript-bound callback to invoke with the result.
-         */
         void call_toplevel_async(const nl::json& request, emscripten::val callback)
         {
             XOCAML_LOG("Toplevel Async Request", request.dump(2));

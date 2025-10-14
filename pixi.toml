@@ -60,10 +60,10 @@ opam exec -- dune pkg lock
 clean = { cmd = "opam exec -- dune clean --root $OCAML_DIR", cwd = "ocaml" }
 
 # Builds the OCaml project (specifically the JavaScript target).
-build = { cmd = "opam exec -- dune build --root $OCAML_DIR", cwd = "ocaml" }
+build-dev = { cmd = "opam exec -- dune build --profile dev --root $OCAML_DIR", cwd = "ocaml" }
 
 # Creates a release build of the OCaml project.
-release = { cmd = "opam exec -- dune build --profile release --root $OCAML_DIR", cwd = "ocaml" }
+build-release = { cmd = "opam exec -- dune build --profile release --root $OCAML_DIR", cwd = "ocaml" }
 
 # Starts a simple Python web server to test the 'playground' example.
 playground = { cmd = "python3 -m http.server -d $OCAML_DIR/playground " }
@@ -152,29 +152,21 @@ build-jupyterlite = { cmd = "rm -fr _output && rm -f .jupyterlite.doit.db && jup
 
 # Serves the JupyterLite site locally for development and testing.
 # This provides a quick way to test the WASM kernel in a live browser environment.
-serve-jupyterlite = { cmd = "rm -fr _output && rm -f .jupyterlite.doit.db && jupyter lite serve --XeusAddon.prefix=.pixi/envs/kernel" }
+serve-jupyterlite = { cmd = "python3 -m http.server -d _output/" }
 
-install-serve = {depends-on = ["build-kernel","install-kernel","serve-jupyterlite"]}
+build-all = {depends-on = ["build-kernel","install-kernel", "build-jupyterlite"]}
 
 
-# A convenience task to run the entire build process in sequence.
-build-all = """
+build-serve = {depends-on = ["build-all", "serve-jupyterlite"]}
+
+pre-release = """
 pixi run sync-version && \
-pixi run -e ocaml release &&\
 pixi run build-kernel && \
+pixi run test &&\
 pixi run install-kernel && \
 pixi run build-jupyterlite
+pixi run build-docs
 """
-
-# A convenience task to run the entire build process and then serve the result.
-build-all-serve = """
-pixi run sync-version && \
-pixi run -e ocaml build &&\
-pixi run build-kernel && \
-pixi run install-kernel && \
-pixi run serve-jupyterlite
-"""
-
 
 #==============================================================================
 # [feature.dev-tools]: For developer utilities like the version sync script
@@ -191,6 +183,44 @@ sync-version = "python scripts/sync_version.py"
 
 # Verifies that the versions are in sync (for CI)
 verify-version = "python scripts/sync_version.py --check"
+
+
+#==============================================================================
+# [feature.docs]: Documentation Generation Environment
+#==============================================================================
+[feature.docs]
+platforms = ["linux-64"]
+
+[feature.docs.dependencies]
+doxygen = "*"
+sphinx = "*"
+breathe = "*"
+opam = "*"
+furo = "*"
+[feature.docs.tasks]
+
+# Run Doxygen to generate XML from C++ sources
+build-docs-cpp = { cmd = "mkdir -p docs/build/doxygen && doxygen docs/doxygen/Doxyfile.in" }
+
+# Run Odoc to generate HTML from OCaml sources
+build-docs-ocaml = { cmd = """
+opam init --disable-sandboxing --no --compiler=5.3.0 && 
+opam install dune && \
+opam exec -- dune pkg lock --root ocaml && \
+opam exec -- dune build --root ocaml @doc && \
+rm -rf _output/docs/odoc && \
+mkdir -p _output/docs/odoc && \
+cp -r ocaml/_build/default/_doc/_html/* _output/docs/odoc/""" }
+
+# Run Sphinx to build the final website
+build-docs-sphinx = { cmd = "sphinx-build -b html docs/source _output/docs"}
+
+# Master task to build all documentation
+build-docs = { depends-on = ["build-docs-cpp", "build-docs-ocaml", "build-docs-sphinx"] }
+
+# Serve the generated documentation
+serve-docs = { cmd = "python3 -m http.server -d _output/docs/" }
+
 
 ###############################################################################
 ### [environments]: Environment Definitions
@@ -213,6 +243,9 @@ ocaml = { features = ["ocaml"] }
 
 # The 'test' environment is for running the JavaScript tests.
 test = { features = ["test"] }
+
+# The 'docs' environment for building and serving documentation.
+docs = { features = ["docs"] }
 
 dev-tools = { features = ["dev-tools"] }
 

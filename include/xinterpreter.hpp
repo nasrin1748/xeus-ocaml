@@ -63,6 +63,9 @@ namespace xeus_ocaml
          */
         void handle_setup_callback(const std::string& result_str);
         
+        // Static method to get the singleton instance.
+        static interpreter& get_instance();
+
     private:
         // Implementation of the xinterpreter interface
         void configure_impl() override;
@@ -96,6 +99,9 @@ namespace xeus_ocaml
 
         std::map<int, pending_request> m_pending_requests;
         int m_request_id_counter;
+
+        // Singleton instance pointer.
+        static interpreter* s_instance;
     };
 }
 

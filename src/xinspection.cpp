@@ -55,13 +55,6 @@ namespace xeus_ocaml
         return doc;
     }
 
-    /**
-     * @brief Handles a code inspection request.
-     * @param code The code in the cell.
-     * @param cursor_pos The cursor's position.
-     * @param detail_level The requested detail level.
-     * @return A JSON object for the `inspect_reply` message.
-     */
     nl::json handle_inspection_request(const std::string& code, int cursor_pos, int detail_level)
     {
         XOCAML_LOG("inspect_request", "Handling inspection request of level: " + std::to_string(detail_level));

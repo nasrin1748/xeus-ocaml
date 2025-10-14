@@ -2,6 +2,8 @@
 
 (name xocaml)
 
+
+
 ;; This stanza contains all the metadata and dependencies from your .opam file
 (package
  (name xocaml) ; This should match the project name
@@ -20,7 +22,8 @@
  (depends
   (ocaml (>= 5.2))
   (dune (>= 3.0))
-  merlin-lib
+   merlin-lib
+   cppo
   (yojson (>= 1.6.0))
   (js_of_ocaml (>= 5.0.0))
   (js_of_ocaml-ppx (>= 5.0.0))
@@ -34,6 +37,5 @@
   (cmdliner
    (>= 1.3.0))
    (ocamlgraph (>= 2.2.0))
+   odoc
 ))
-
-

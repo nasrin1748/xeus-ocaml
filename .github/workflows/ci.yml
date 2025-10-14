@@ -62,6 +62,9 @@ jobs:
       - name: Build JupyterLite
         run: pixi run build-jupyterlite
 
+      - name: Build C++/Ocam API Documentation
+        run: pixi run build-docs
+
       # Only upload artifacts on pushes to main, not on pull requests.
       - name: Upload Conda package artifact
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'

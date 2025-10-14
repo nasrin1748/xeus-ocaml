@@ -6,9 +6,8 @@
   (javascript_files stubs.js))
  (preprocess (pps js_of_ocaml-ppx lwt_ppx ))
  (libraries
+  xocaml.xutil
   protocol
-  static_files 
-  dynamic_modules
   merlin-lib.kernel
   merlin-lib.utils
   merlin-lib.query_protocol
