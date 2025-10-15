@@ -103,7 +103,7 @@ jobs:
         with:
           filters: |
             recipe:
-              - 'recipe/recipe.yaml'
+              - 'recipe/recipe-prod.yaml'
 
       - name: Continue only if recipe changed
         if: steps.filter.outputs.recipe != 'true'
@@ -126,7 +126,7 @@ jobs:
         id: get_version
         uses: mikefarah/yq@v4
         with:
-          cmd: yq e '.context.version' 'recipe/recipe.yaml'
+          cmd: yq e '.context.version' 'recipe/recipe-prod.yaml'
 
       - name: Create and Push Tag
         run: |

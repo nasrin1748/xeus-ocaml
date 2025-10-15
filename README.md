@@ -1,4 +1,10 @@
-# ![xeus-logo](https://raw.githubusercontent.com/jupyter-xeus/xeus/refs/heads/main/docs/source/xeus.svg) OCAML ![xeus-ocaml logo](https://raw.githubusercontent.com/davy39/xeus-ocaml/refs/heads/main/share/jupyter/kernels/xocaml/logo-svg.svg)
+    
+<h1 align="center">
+  <img src="https://raw.githubusercontent.com/jupyter-xeus/xeus/refs/heads/main/docs/source/xeus.svg" alt="xeus-logo" height="100" />
+  <img src="https://upload.wikimedia.org/wikipedia/commons/f/ff/OCaml_Logo.svg" alt="xeus-ocaml logo" height="100"/>
+</h1>
+
+  
 
 [![CI and Auto-Tagging](https://github.com/davy39/xeus-ocaml/actions/workflows/ci.yml/badge.svg)](https://github.com/davy39/xeus-ocaml/actions/workflows/ci.yml)
 [![lite-badge](https://jupyterlite.rtfd.io/en/latest/_static/badge.svg)](https://davy39.github.io/xeus-ocaml/)

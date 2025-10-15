@@ -153,10 +153,23 @@ rattler-build = "*"
 # It targets the emscripten-wasm32 platform and uses the necessary channels.
 # --no-build-id --keep-build allow caching from one build to another
 # remove wasm & js file to make sure they are rebuilt
+
+build-kernel-dev = """
+rm -f output/bld/rattler-build_xeus-ocaml/cxx_cache/xocaml.js && \
+rm -f output/bld/rattler-build_xeus-ocaml/cxx_cache/xocaml.wasm && \
+rattler-build build --recipe recipe/recipe-dev.yaml \
+            -c https://repo.prefix.dev/emscripten-forge-dev \
+            -c conda-forge \
+            --target-platform emscripten-wasm32 \
+            --no-build-id \ 
+            --keep-build
+"""
+
+
 build-kernel = """
 rm -f output/bld/rattler-build_xeus-ocaml/cxx_cache/xocaml.js && \
 rm -f output/bld/rattler-build_xeus-ocaml/cxx_cache/xocaml.wasm && \
-rattler-build build --recipe recipe/recipe.yaml \
+rattler-build build --recipe recipe/recipe-prod.yaml \
             -c https://repo.prefix.dev/emscripten-forge-dev \
             -c conda-forge \
             --target-platform emscripten-wasm32 \
@@ -186,8 +199,11 @@ serve-jupyterlite = { cmd = "python3 -m http.server -d _output/" }
 
 build-all = {depends-on = ["build-kernel","install-kernel", "build-jupyterlite"]}
 
+build-all-dev = {depends-on = ["build-kernel-dev","install-kernel", "build-jupyterlite"]}
 
 build-serve = {depends-on = ["build-all", "serve-jupyterlite"]}
+
+build-serve-dev = {depends-on = ["build-all-dev", "serve-jupyterlite"]}
 
 pre-release = """
 rm -rf output && \

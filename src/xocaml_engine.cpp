@@ -11,10 +11,7 @@
 #include <iostream>
 #include <emscripten/bind.h>
 
-// Enables detailed logging for debugging purposes.
-#define DEBUG_XOCAML
-
-#ifdef DEBUG_XOCAML
+#ifndef NDEBUG
 #define XOCAML_LOG(channel, message) std::cout << "[xeus-ocaml][" << channel << "] " << message << std::endl
 #else
 #define XOCAML_LOG(channel, message)

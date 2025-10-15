@@ -8,7 +8,7 @@ from ruamel.yaml import YAML
 SCRIPT_DIR = Path(__file__).parent
 PROJECT_ROOT = SCRIPT_DIR.parent
 HEADER_PATH = PROJECT_ROOT / "include" / "xeus_ocaml_config.hpp"
-RECIPE_PATH = PROJECT_ROOT / "recipe" / "recipe.yaml"
+RECIPE_PATH = PROJECT_ROOT / "recipe" / "recipe-prod.yaml"
 # ---
 
 def get_version_from_header():

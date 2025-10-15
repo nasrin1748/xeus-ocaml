@@ -16,7 +16,6 @@ open Merlin_utils
 open Std
 open Merlin_kernel
 open Merlin_commands
-open Lwt.Syntax
 open Xutil
 module Location = Ocaml_parsing.Location
 

@@ -27,7 +27,6 @@
 open Js_of_ocaml
 open Lwt.Syntax
 open Xutil
-open Js_of_ocaml_toplevel
 open Merlin_utils.Std
 
 (** The designated path within the `js_of_ocaml` VFS where all Merlin artifacts are stored. *)

@@ -1,0 +1,89 @@
+context:
+  version: 0.2.6 # Set in include/xeus_ocaml_config.hpp
+
+package:
+  name: xeus-ocaml
+  version: ${{ version }}
+
+source:
+- path: ../
+
+requirements:
+  build:
+  - ${{ compiler("cxx") }}
+  - cmake
+  - make
+  - ninja
+  - opam
+  host:
+  - nlohmann_json
+  - xeus
+  - xeus-lite
+
+
+
+build:
+  number: 0
+
+  script:
+  - |
+    (
+      # --- We need to disable wasm related flags for caml ---
+      unset CC CXX CFLAGS CXXFLAGS LDFLAGS # Need nativ builders
+      # --- Ocaml cache dir outside work directory to be kept between builds ---
+      OPAM_CACHE_DIR=$SRC_DIR/../opam_cache
+      DUNE_CACHE_DIR=$SRC_DIR/../dune_cache
+      
+      # Create cache path if they don't exist
+      mkdir -p $OPAM_CACHE_DIR
+      #mkdir -p $DUNE_CACHE_DIR/dune.lock
+
+      # Configure opam to use cache dir
+      export OPAMROOT=$OPAM_CACHE_DIR
+
+      cd ocaml
+      #ln -s $DUNE_CACHE_DIR/dune.lock dune.lock
+      opam init --disable-sandboxing --no --compiler=5.3.0
+      opam install dune 
+      opam exec -- dune pkg lock
+      rm -rf $DUNE_CACHE_DIR/default
+      opam exec -- dune build --profile release --build-dir $DUNE_CACHE_DIR
+    )
+
+
+  - rm -rf ocaml-build
+  - mkdir -p ocaml-build
+  - cp -r ../dune_cache/default/src/* ocaml-build/
+    # =========================================================================
+    # PHASE 2: Build WASM kernel with caching
+    # =========================================================================
+    # Create the C++ build directory outside of the source tree
+  - CXX_BUILD_DIR=$SRC_DIR/../cxx_cache
+  - mkdir -p $CXX_BUILD_DIR
+  - cd $CXX_BUILD_DIR
+
+    # Configure CMake from the new directory, pointing back to the source.
+    # The `-S` flag in modern CMake is perfect for this.
+  - |
+    cmake -S $SRC_DIR -GNinja ${CMAKE_ARGS}    \
+        -DCMAKE_BUILD_TYPE=release               \
+        -DCMAKE_PREFIX_PATH=$PREFIX            \
+        -DCMAKE_INSTALL_PREFIX=$PREFIX
+
+    # Compile and install. Ninja will only rebuild what has changed.
+  - ninja install
+
+
+
+tests:
+- script:
+  - test -f $PREFIX/bin/xocaml.wasm
+  - test -f $PREFIX/bin/xocaml.js
+about:
+  license: GPL-3.0-or-later
+  license_file: LICENSE
+  summary: xeus-ocaml
+  homepage: https://github.com/davy39/xeus-ocaml
+extra:
+  recipe-maintainers:
+  - Davy39
